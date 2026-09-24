@@ -162,38 +162,6 @@ function AnimatedBackground() {
   );
 }
 
-/** The JB-Router mark: the app icon's orange gradient with the JB lettering. */
-function JbLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" role="img" aria-label="JB-Router">
-      <defs>
-        <linearGradient id="jb-logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#f97815" />
-          <stop offset="100%" stopColor="#c2590a" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="24" fill="url(#jb-logo-gradient)" />
-      <text
-        x="50"
-        y="66"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily="system-ui, -apple-system, Segoe UI, sans-serif"
-        fontSize="46"
-        fontWeight="700"
-        letterSpacing="-1"
-        fill="#ffffff"
-      >
-        JB
-      </text>
-      {/* the router motif from the app icon, kept small so the mark stays readable at 28px */}
-      <circle cx="30" cy="79" r="3" fill="#ffffff" opacity="0.9" />
-      <circle cx="70" cy="79" r="3" fill="#ffffff" opacity="0.6" />
-      <path d="M35 79h10M55 79h10" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" opacity="0.75" />
-    </svg>
-  );
-}
-
 function GithubIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -772,8 +740,8 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center">
-              <JbLogo className="h-10 w-10 rounded-xl shadow-lg shadow-brand-glow" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-hero-from via-hero-to to-hero-accent shadow-lg shadow-brand-glow">
+              <Route className="h-5 w-5 text-white" />
               <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-success text-[8px] font-bold text-text-primary">
                 <Zap className="h-2.5 w-2.5" />
               </div>
@@ -1240,7 +1208,9 @@ export default function App() {
 
           <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border-subtle pt-8 sm:flex-row light:border-border">
             <div className="flex items-center gap-2">
-              <JbLogo className="h-7 w-7 rounded-md" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-hero-from via-hero-to to-hero-accent">
+                <Route className="h-3.5 w-3.5 text-white" />
+              </div>
               <span className="text-sm font-bold text-text-primary">
                 JB-Router Wizard
               </span>

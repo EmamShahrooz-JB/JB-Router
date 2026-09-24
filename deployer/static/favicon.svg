@@ -1,15 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f97815"/>
-      <stop offset="100%" stop-color="#c2590a"/>
+    <linearGradient id="jb" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f97815"/>
+      <stop offset="1" stop-color="#c2590a"/>
     </linearGradient>
   </defs>
-  <rect width="100" height="100" rx="24" fill="url(#g)"/>
-  <text x="50" y="47" text-anchor="middle" dominant-baseline="central"
-        font-family="system-ui, -apple-system, Segoe UI, sans-serif"
-        font-size="46" font-weight="700" letter-spacing="-1" fill="#ffffff">JB</text>
-  <circle cx="30" cy="79" r="3" fill="#ffffff" opacity="0.9"/>
-  <circle cx="70" cy="79" r="3" fill="#ffffff" opacity="0.6"/>
-  <path d="M35 79h10M55 79h10" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity="0.75"/>
+  <rect width="64" height="64" rx="14" fill="url(#jb)"/>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="central"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="34" font-weight="800" letter-spacing="-1.5" fill="#ffffff">JB</text>
 </svg>
