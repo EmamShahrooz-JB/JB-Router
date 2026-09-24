@@ -358,6 +358,30 @@ function currentTheme() {
   return "light";
 }
 
+function storedTheme() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("theme") || "{}");
+    return (stored.state || {}).theme || "system";
+  } catch {
+    return "system";
+  }
+}
+
+/* The dashboard re-applies the theme when the OS preference changes (useTheme hook) —
+   same behaviour here while no explicit choice is stored in the wizard. */
+function watchSystemTheme() {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const sync = () => {
+    if (storedTheme() !== "system") return;
+    const theme = media.matches ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    $("themeIconDark").classList.toggle("hidden", theme === "dark");
+    $("themeIconLight").classList.toggle("hidden", theme !== "dark");
+  };
+  if (media.addEventListener) media.addEventListener("change", sync);
+  else if (media.addListener) media.addListener(sync);
+}
+
 function applyTheme(theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   $("themeIconDark").classList.toggle("hidden", theme === "dark");
@@ -378,6 +402,7 @@ function boot() {
   $("themeToggle").addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
   $("themeIconDark").classList.toggle("hidden", currentTheme() === "dark");
   $("themeIconLight").classList.toggle("hidden", currentTheme() !== "dark");
+  watchSystemTheme();
   applyQueryParams();
 
   $("togglePassword").addEventListener("click", () => {

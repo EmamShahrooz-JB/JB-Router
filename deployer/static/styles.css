@@ -228,6 +228,7 @@ ol {
     color: var(--color-text-main);
 }
 
+.header,
 .header .brand-word {
     color: var(--color-primary);
 }
