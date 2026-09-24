@@ -1,0 +1,35 @@
+{
+  "name": "jb-router",
+  "main": "cloudflare-worker.js",
+  "compatibility_date": "2025-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "DATA_DIR": "/tmp/.9router",
+    "AUTH_COOKIE_SECURE": "true"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROUTER_DATABASE",
+        "class_name": "RouterDatabase"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-durable-sqlite",
+      "new_sqlite_classes": [
+        "RouterDatabase"
+      ]
+    }
+  ]
+}
