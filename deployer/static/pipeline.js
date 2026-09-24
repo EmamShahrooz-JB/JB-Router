@@ -113,6 +113,30 @@ async function postJson(fetchImpl, apiBase, path, body, signal) {
   return data;
 }
 
+/**
+ * POST a FormData body and report upload progress. Browsers can only report upload progress
+ * through XMLHttpRequest, so the page uses that; Node (tests) falls back to fetch.
+ */
+async function uploadRequest({ url, headers, body, signal, onProgress }) {
+  if (typeof XMLHttpRequest === "function") {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      for (const [key, value] of Object.entries(headers || {})) xhr.setRequestHeader(key, value);
+      if (onProgress && xhr.upload) {
+        xhr.upload.addEventListener("progress", (e) => onProgress(e.loaded, e.total || 0));
+      }
+      xhr.addEventListener("load", () => resolve({ status: xhr.status, text: xhr.responseText || "" }));
+      xhr.addEventListener("error", () => reject(new DeployError("network error while uploading the assets")));
+      xhr.addEventListener("abort", () => reject(new DeployError("upload aborted")));
+      if (signal) signal.addEventListener("abort", () => xhr.abort(), { once: true });
+      xhr.send(body);
+    });
+  }
+  const res = await fetch(url, { method: "POST", headers, body, signal });
+  return { status: res.status, text: await res.text() };
+}
+
 async function downloadWithProgress(fetchImpl, url, onBytes, signal) {
   const res = await fetchImpl(url, { signal });
   if (!res.ok) throw new DeployError(`could not download the deploy payload (HTTP ${res.status})`);
@@ -142,6 +166,13 @@ export async function listAccounts({ cfToken, apiBase = "", fetchImpl = fetch, s
 
 export async function getSubdomain({ cfToken, accountId, apiBase = "", fetchImpl = fetch, signal }) {
   return postJson(fetchImpl, apiBase, "/api/subdomain", { token: cfToken, accountId }, signal);
+}
+
+/** Hash → size index of the deployer's own pre-encoded asset sections (fast path only). */
+export async function getBundleManifest({ apiBase = "", fetchImpl = fetch, signal }) {
+  const res = await fetchImpl(apiBase + "/api/manifest", { signal });
+  if (!res.ok) throw new DeployError(`could not read the deployer manifest (HTTP ${res.status})`);
+  return res.json();
 }
 
 /* ------------------------------------------------------------------ deploy */
@@ -195,10 +226,19 @@ export async function runDeploy(opts) {
   }
 
   /* 2. payload -------------------------------------------------------------- */
-  step("bundle", "active");
+  // Fast path: the deployer Worker streams the asset sections straight into Cloudflare, so
+  // the browser never downloads or uploads the ~10 MB of static assets.
   const meta = await (await fetchImpl(apiBase + "/api/meta", { signal })).json();
+  if (meta.streaming) {
+    return runStreamingDeploy({
+      cfToken, accountId, name, subdomain, jwtSecret, password, release: release || meta.release,
+      apiBase, fetchImpl, onEvent, signal
+    });
+  }
+
+  step("bundle", "active");
   const zipBytes = await downloadWithProgress(fetchImpl, zipUrl, (received) => {
-    emit({ type: "progress", id: "bundle", received, total: 0 });
+    emit({ type: "progress", id: "bundle", received, total: meta.assetsZipBytes || 0 });
   }, signal);
   event("bundle.ok", { release: release || meta.release, bytes: zipBytes.length, files: meta.assetFiles });
   step("bundle", "done");
@@ -232,32 +272,66 @@ export async function runDeploy(opts) {
 
   /* 5. asset buckets -------------------------------------------------------- */
   step("assets", "active");
-  let uploaded = 0;
-  for (let i = 0; i < buckets.length; i++) {
-    const form = new FormData();
-    for (const hash of buckets[i]) {
+  const jobs = buckets.map((hashes) => {
+    let size = 0;
+    for (const hash of hashes) {
       const file = byHash.get(hash);
       if (!file) fail("assets", `Asset requested by the upload session is missing: ${hash}`);
+      size += file.bytes.length;
+    }
+    return { hashes, size, sent: 0 };
+  });
+  const totalBytes = jobs.reduce((n, job) => n + job.size, 0);
+  let uploadedBytes = 0;
+  const uploadUrl = `${apiBase}/api/assets-upload?account=${encodeURIComponent(accountId)}&name=${encodeURIComponent(name)}`;
+
+  const sendBucket = async (job) => {
+    const form = new FormData();
+    for (const hash of job.hashes) {
+      const file = byHash.get(hash);
       form.append(hash, new File([bytesToBase64(file.bytes)], hash, { type: mimeFor(file.path, mimeMap) }), hash);
     }
-    // The content-type header is intentionally left to fetch so the multipart boundary matches.
-    const res = await fetchImpl(`${apiBase}/api/assets-upload?account=${encodeURIComponent(accountId)}&name=${encodeURIComponent(name)}`, {
-      method: "POST",
+    const res = await uploadRequest({
+      url: uploadUrl,
       headers: { "x-cf-token": cfToken, "x-assets-jwt": assetsJwt },
       body: form,
-      signal
+      signal,
+      onProgress: (loaded) => {
+        uploadedBytes += loaded - job.sent;
+        job.sent = loaded;
+        emit({ type: "progress", id: "assets", received: uploadedBytes, total: totalBytes });
+      }
     });
-    const text = await res.text();
     let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-    if (!res.ok || !data || data.ok !== true) {
-      fail("assets", `Asset upload failed: ${(data && data.error) || "HTTP " + res.status}`);
+    try { data = res.text ? JSON.parse(res.text) : null; } catch { data = null; }
+    if (res.status < 200 || res.status >= 300 || !data || data.ok !== true) {
+      const message = (data && data.error) || `HTTP ${res.status}${res.text ? " " + res.text.slice(0, 160) : ""}`;
+      throw new DeployError(`Asset upload failed: ${message}`, res.status);
     }
     if (data.jwt) assetsJwt = data.jwt;
-    uploaded += buckets[i].length;
-    emit({ type: "progress", id: "assets", received: uploaded, total: pending });
-    event("assets.bucket", { index: i + 1, buckets: buckets.length, uploaded, pending });
-  }
+  };
+
+  // Uploading three buckets at once is much faster on high-latency links; a bucket that
+  // fails (e.g. because the session token rotated) is retried once with the newest token.
+  let cursor = 0;
+  const drain = async () => {
+    while (cursor < jobs.length) {
+      const index = cursor++;
+      const job = jobs[index];
+      try {
+        await sendBucket(job);
+      } catch (firstError) {
+        try {
+          await sendBucket(job);
+        } catch {
+          fail("assets", firstError.message);
+        }
+      }
+      event("assets.bucket", { index: index + 1, buckets: jobs.length, uploaded: uploadedBytes, pending: totalBytes });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, jobs.length) }, drain));
+
   if (!assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
   assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
   event("assets.ok", { total: entries.length, pending });
@@ -305,6 +379,24 @@ export async function runDeploy(opts) {
   return result;
 }
 
+/** Keeps polling after the foreground wait expired and reports success whenever it lands. */
+async function continueHealthInBackground({ fetchImpl, url, signal, emit, started, deadline }) {
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetchImpl(`${url}/api/health?jb_probe=${Date.now()}`, { cache: "no-store", signal });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.ok) {
+          emit({ type: "event", key: "health.late", data: { ms: Date.now() - started } });
+          return;
+        }
+      }
+    } catch { /* keep trying */ }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  emit({ type: "event", key: "health.giveup", data: { ms: Date.now() - started } });
+}
+
 async function loadMimeMap(fetchImpl, url, signal) {
   try {
     const res = await fetchImpl(url, { signal });
@@ -323,9 +415,9 @@ async function loadMimeMap(fetchImpl, url, signal) {
  * (A server-side probe from the deployer Worker would not work: requests to *.workers.dev made
  * *from inside* Cloudflare resolve against the local worker registry and 404 with error 1042.)
  */
-async function waitForHealth({ fetchImpl, url, signal, emit }) {
+async function waitForHealth({ fetchImpl, url, signal, emit, foregroundMs = 0 }) {
   const started = Date.now();
-  const deadline = started + 5 * 60 * 1000;
+  const deadline = started + 3 * 60 * 1000;
   let attempt = 0;
   let last = null;
   while (Date.now() < deadline) {
@@ -336,14 +428,121 @@ async function waitForHealth({ fetchImpl, url, signal, emit }) {
       if (res.ok) {
         const data = await res.json().catch(() => null);
         if (data && data.ok) return { ok: true, ms: Date.now() - started, status: res.status };
+      if (foregroundMs && Date.now() - started > foregroundMs) {
+        // The deployment itself is done; only the workers.dev route is still warming up. Hand
+        // control back to the caller and keep probing in the background so the page never
+        // looks stuck for minutes on a slow edge.
+        emit({ type: "event", key: "health.slow", data: { ms: Date.now() - started } });
+        void continueHealthInBackground({ fetchImpl, url, signal, emit, started, deadline });
+        return { ok: false, ms: Date.now() - started, status: res.status, pending: true };
+      }
       }
       if (attempt === 1) emit({ type: "event", key: "health.waiting", data: {} });
     } catch (err) {
       if (signal && signal.aborted) throw err;
       last = last || "network";
     }
-    await new Promise((r) => setTimeout(r, 4000));
+    await new Promise((r) => setTimeout(r, 2500));
     emit({ type: "wait", attempt });
   }
   return { ok: false, status: last };
+}
+
+
+/* ------------------------------------------------------------------ fast path */
+
+/**
+ * Server-side install: the browser sends only hash lists; every asset byte travels inside
+ * Cloudflare (deployer Worker → assets upload endpoint) and the 21 MB module is streamed the
+ * same way by /api/script. The visitor's connection carries a few kilobytes in total.
+ */
+async function runStreamingDeploy(opts) {
+  const {
+    cfToken, accountId, name, subdomain, jwtSecret, password, release,
+    apiBase = "", fetchImpl = fetch, onEvent = () => {}, signal, foregroundMs = 0
+  } = opts;
+
+  const emit = (event) => { try { onEvent(event); } catch { /* ignore */ } };
+  const event = (key, data) => emit({ type: "event", key, data });
+  const step = (id, state, note) => emit({ type: "step", id, state, note });
+  const fail = (id, message) => { emit({ type: "step", id, state: "error" }); event("failure", { id, message }); throw new DeployError(message); };
+
+  /* payload index (a few kB) */
+  step("bundle", "active");
+  const index = await getBundleManifest({ apiBase, fetchImpl, signal });
+  event("bundle.ok", { release: release || index.release, bytes: index.bytes, files: index.files, streamed: true });
+  step("bundle", "done");
+
+  /* upload session built from the deployer's own manifest */
+  step("session", "active");
+  const session = await postJson(fetchImpl, apiBase, "/api/session-bundle", { token: cfToken, accountId, name }, signal);
+  let assetsJwt = session.jwt;
+  const uploads = session.uploads || [];
+  event("session.ok", {
+    pending: session.pendingFiles || 0, buckets: uploads.length, files: index.files,
+    pendingBytes: session.pendingBytes || 0, streamed: true
+  });
+  step("session", "done");
+
+  /* asset chunks, streamed inside Cloudflare */
+  step("assets", "active");
+  const totalBytes = uploads.reduce((n, u) => n + u.bytes, 0);
+  let uploadedBytes = 0;
+  let cursor = 0;
+  const nextChunk = async () => {
+    while (cursor < uploads.length) {
+      const item = uploads[cursor++];
+      const result = await postJson(fetchImpl, apiBase, "/api/upload-chunk", {
+        token: cfToken, accountId, name, assetsJwt, chunk: item.index
+      }, signal);
+      if (result.jwt) assetsJwt = result.jwt;
+      uploadedBytes += item.bytes;
+      emit({ type: "progress", id: "assets", received: uploadedBytes, total: totalBytes });
+      event("assets.chunk", { index: cursor, chunks: uploads.length, files: item.files });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, uploads.length) }, nextChunk));
+  if (uploads.length && !assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
+  if (assetsJwt) assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
+  event("assets.ok", { total: index.files, pending: session.pendingFiles || 0, streamed: true });
+  step("assets", "done", String(index.files));
+
+  /* worker module (streamed from the deployer's own assets), secrets, url */
+  step("script", "active");
+  const script = await postJson(fetchImpl, apiBase, "/api/script", {
+    token: cfToken, accountId, name, assetsJwt, jwtSecret, password
+  }, signal);
+  event("script.ok", { name: script.id, deploymentId: script.deploymentId, hasAssets: script.hasAssets });
+  step("script", "done");
+
+  step("secrets", "active");
+  const secrets = await postJson(fetchImpl, apiBase, "/api/secrets", {
+    token: cfToken, accountId, name,
+    secrets: [
+      { name: "JWT_SECRET", text: jwtSecret },
+      { name: "INITIAL_PASSWORD", text: password }
+    ]
+  }, signal);
+  event("secrets.ok", { stored: secrets.stored });
+  step("secrets", "done");
+
+  step("enable", "active");
+  await postJson(fetchImpl, apiBase, "/api/enable", { token: cfToken, accountId, name }, signal);
+  const url = `https://${name}.${subdomain}.workers.dev`;
+  event("enable.ok", { url });
+  step("enable", "done");
+
+  /* health, polled from the visitor's browser (see waitForHealth) */
+  step("health", "active");
+  const health = await waitForHealth({ fetchImpl, url, signal, emit, foregroundMs });
+  step("health", health.ok ? "done" : "error", health.ok ? `${health.ms}` : "timeout");
+  event(health.ok ? "health.ok" : "health.timeout", { ms: health.ms, status: health.status });
+
+  const result = {
+    name, url, loginUrl: url + "/login", apiBaseUrl: url + "/v1",
+    health: health.ok ? "ok" : "unknown", status: health.status || 0,
+    accountId, release: release || index.release, password, streamed: true
+  };
+  emit({ type: "result", result });
+  return result;
 }

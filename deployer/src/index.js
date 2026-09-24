@@ -54,8 +54,14 @@ async function handleApi(request, env, url) {
       return listAccounts(request);
     case "/api/subdomain":
       return subdomain(request);
+    case "/api/manifest":
+      return bundleManifest(env, url);
     case "/api/session":
       return assetsSession(request);
+    case "/api/session-bundle":
+      return sessionFromBundle(request, env, url);
+    case "/api/upload-chunk":
+      return uploadBundleChunk(request, env, url);
     case "/api/assets-upload":
       return assetsUploadRelay(request, url);
     case "/api/script":
@@ -165,6 +171,134 @@ async function assetsSession(request) {
   });
   const result = data.result || {};
   return json({ ok: true, jwt: result.jwt || null, buckets: result.buckets || [] });
+}
+
+/* -------------------------------------------------- bundle streaming (fast path) */
+
+/** The build-time index of the pre-encoded asset sections; small and cached per isolate. */
+let bundleIndexCache = null;
+async function bundleIndex(env, origin) {
+  if (bundleIndexCache) return bundleIndexCache;
+  const res = await env.ASSETS.fetch(new Request(new URL("/bundle/manifest.json", origin)));
+  if (!res.ok) throw new Error("the deployer bundle has no manifest.json (build with make-bundle.mjs)");
+  const index = await res.json();
+  bundleIndexCache = index;
+  return index;
+}
+
+/** Public, browser-friendly summary of the bundle: chunk plan, so the page can show progress. */
+async function bundleManifest(env, url) {
+  const index = await bundleIndex(env, url.origin);
+  return json({
+    ok: true,
+    release: index.release,
+    files: index.files,
+    bytes: index.bytes,
+    streaming: true,
+    chunks: index.chunks.map((chunk, i) => ({ index: i, bytes: chunk.bytes, files: chunk.files }))
+  });
+}
+
+/**
+ * Creates the asset upload session from our own manifest and answers with the hashes
+ * Cloudflare still wants. Cloudflare's own bucketing is ignored on purpose: the caller
+ * decides how to split the work (see /api/upload-part).
+ */
+async function sessionFromBundle(request, env, url) {
+  const body = await readJson(request);
+  const token = requireString(body.token, "cloudflare token");
+  const account = accountId(body.accountId);
+  const script = scriptName(body.name);
+
+  const index = await bundleIndex(env, url.origin);
+  const manifest = {};
+  for (const entry of index.entries) manifest[entry.path] = { hash: entry.hash, size: entry.size };
+
+  const data = await cf(`/accounts/${account}/workers/scripts/${script}/assets-upload-session`, {
+    token, method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ manifest })
+  });
+  const result = data.result || {};
+  const wanted = new Set();
+  for (const bucket of result.buckets || []) for (const hash of bucket) wanted.add(hash);
+
+  // Which pre-built chunks carry the missing assets? Uploading a whole chunk may include a few
+  // files Cloudflare no longer asked for — measured against the API, extra parts are accepted.
+  const uploads = [];
+  let pendingBytes = 0;
+  index.chunks.forEach((chunk, i) => {
+    const files = chunk.hashes.filter((hash) => wanted.has(hash));
+    if (!files.length) return;
+    uploads.push({ index: i, bytes: chunk.bytes, files: files.length });
+    pendingBytes += chunk.bytes;
+  });
+
+  return json({
+    ok: true,
+    jwt: result.jwt || null,
+    totalFiles: index.files,
+    pendingFiles: wanted.size,
+    pendingBytes,
+    uploads
+  });
+}
+
+/**
+ * Streams one pre-built multipart chunk (bundle/chunks/chunk-N.bin) plus the closing boundary
+ * straight into Cloudflare's assets upload endpoint. Nothing is buffered and no encoding
+ * happens at runtime: the body is piped through, so the Worker stays far below its CPU budget.
+ */
+async function uploadBundleChunk(request, env, url) {
+  const body = await readJson(request);
+  const token = requireString(body.token, "cloudflare token");
+  const account = accountId(body.accountId);
+  const script = scriptName(body.name);
+  const jwt = requireString(body.assetsJwt, "assets jwt");
+  const chunkIndex = Number(body.chunk);
+  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) throw new Error("missing chunk index");
+
+  await cf("/user/tokens/verify", { token }); // the visitor's token stays meaningful
+
+  const index = await bundleIndex(env, url.origin);
+  const chunk = index.chunks[chunkIndex];
+  if (!chunk) throw new Error(`the bundle has no chunk ${chunkIndex}`);
+
+  const chunkRes = await env.ASSETS.fetch(new Request(new URL("/bundle/" + chunk.path, url.origin)));
+  if (!chunkRes.ok || !chunkRes.body) throw new Error(`chunk ${chunk.path} is missing from the deployer assets`);
+
+  const tail = new TextEncoder().encode(index.tail || `--${index.boundary}--\r\n`);
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = chunkRes.body.getReader();
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+        controller.enqueue(tail);
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    }
+  });
+
+  const upstream = await fetch(`${CF}/accounts/${account}/workers/assets/upload?base64=true`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      "content-type": `multipart/form-data; boundary=${index.boundary}`
+    },
+    body: stream,
+    duplex: "half"
+  });
+  const text = await upstream.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+  if (!upstream.ok || (data && data.success === false)) {
+    return json({ ok: false, error: errorText(data, upstream.status) }, 400);
+  }
+  return json({ ok: true, jwt: (data.result && data.result.jwt) || null, files: chunk.files, bytes: chunk.bytes });
 }
 
 /** Streams an asset bucket straight through to Cloudflare (base64 multipart, as wrangler does). */

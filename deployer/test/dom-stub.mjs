@@ -41,12 +41,17 @@ class Node {
   set innerHTML(value) { this._text = String(value); this.children = []; }
   get innerHTML() { return this._text; }
   get options() { return this.children.filter((c) => c.tagName === "OPTION"); }
-  appendChild(child) { this.children.push(child); return child; }
+  appendChild(child) {
+    child.parentNode = this;
+    this.children.push(child);
+    return child;
+  }
   append(...nodes) { nodes.forEach((n) => this.appendChild(n)); }
   addEventListener(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); }
   removeEventListener(type, fn) {
     this.handlers[type] = (this.handlers[type] || []).filter((h) => h !== fn);
   }
+  remove() { this.removed = true; this.parentNode = null; }
   querySelector() { return null; }
   setAttribute(name, value) { this.attributes[name] = value; }
   getAttribute(name) { return this.attributes[name]; }
@@ -97,6 +102,8 @@ export function installGlobals(base) {
   };
   globalThis.window = globalThis;
   globalThis.location = { search: "", origin: base, pathname: "/", href: base + "/" };
+  globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+  globalThis.window.matchMedia = globalThis.matchMedia;
   globalThis.sessionStorage = {
     store: new Map(),
     getItem(k) { return this.store.has(k) ? this.store.get(k) : null; },

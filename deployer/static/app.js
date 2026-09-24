@@ -73,6 +73,62 @@ function appendSecret(value) {
   out.scrollTop = out.scrollHeight;
 }
 
+/* One reusable "live" line for transfer progress: it is overwritten in place instead of
+   appending a new row per update, so the terminal stays readable and never looks stuck. */
+let statusLine = null;
+let statusAt = 0;
+let statusTracker = null;
+
+const MB = (bytes) => (bytes / 1048576).toFixed(1);
+
+function status(id, received, total) {
+  const now = Date.now();
+  if (!statusTracker || statusTracker.id !== id) {
+    statusTracker = { id, started: now, lastAt: now, lastBytes: 0, lastChangeAt: now };
+  }
+  if (received !== statusTracker.lastBytes) statusTracker.lastChangeAt = now;
+  statusTracker.lastAt = now;
+  statusTracker.lastBytes = received;
+  if (now - statusAt < 250 && total && received < total) return;
+  statusAt = now;
+  if (!statusLine || !statusLine.parentNode) {
+    out.appendChild(document.createElement("br"));
+    statusLine = document.createElement("span");
+    statusLine.className = "terminal-info";
+    out.appendChild(statusLine);
+  }
+  const seconds = Math.max(0.3, (now - statusTracker.started) / 1000);
+  const speedMbps = received / seconds / 1048576;
+  const idle = (now - statusTracker.lastChangeAt) / 1000;
+  const percent = total ? ` (${Math.round((received / total) * 100)}%)` : "";
+  const eta = total && speedMbps > 0 ? ` · ~${Math.round((total - received) / (received / seconds))}s left` : "";
+  statusTracker.base = `▸ ${id === "bundle" ? "Downloading payload" : "Uploading assets"}: ${MB(received)} MB` +
+    `${total ? " / " + MB(total) + " MB" : ""}${percent} · ${speedMbps.toFixed(2)} MB/s${eta}`;
+  statusLine.textContent = statusTracker.base +
+    (idle > 6 ? ` · waiting on Cloudflare (${Math.round(idle)}s without new bytes)…` : "");
+  out.scrollTop = out.scrollHeight;
+}
+
+/* Keeps the live line honest: while a transfer is running the elapsed seconds tick up even
+   if a progress event is late, so a slow connection never looks like a frozen page. */
+function startHeartbeat() {
+  setInterval(() => {
+    if (!statusTracker || !statusLine) return;
+    if (!statusTracker.base) return;
+    const idle = (Date.now() - statusTracker.lastChangeAt) / 1000;
+    const elapsed = (Date.now() - statusTracker.started) / 1000;
+    statusLine.textContent = statusTracker.base +
+      (idle > 6 ? ` · still working (${Math.round(elapsed)}s in this step)…` : "");
+    out.scrollTop = out.scrollHeight;
+  }, 3000);
+}
+
+function endStatus() {
+  if (statusLine && statusLine.parentNode && typeof statusLine.remove === "function") statusLine.remove();
+  statusLine = null;
+  statusTracker = null;
+}
+
 function standby() {
   const span = document.createElement("span");
   span.textContent = "●●● Standby";
@@ -115,14 +171,14 @@ const mb = (bytes) => (bytes / 1048576).toFixed(1) + " MB";
 /* step id → messages shown in the terminal */
 const MESSAGES = {
   verify: "Validating your Cloudflare API token…",
-  bundle: `Downloading the JB-Router payload (${RELEASE})…`,
+  bundle: "Reading the bundled asset index…",
   hash: "Hashing the static assets with blake3…",
   session: "Creating the asset upload session…",
-  assets: "Uploading the static assets…",
+  assets: "Publishing the static assets…",
   script: "Installing the Worker module and the Durable Object…",
   secrets: "Storing the JWT_SECRET and INITIAL_PASSWORD secrets…",
   enable: "Publishing the workers.dev URL…",
-  health: "Waiting for the deployment to go live…"
+  health: "Waiting for the deployment to go live (usually a few seconds, up to 3 minutes)…"
 };
 
 /* ------------------------------------------------------------------ wizard */
@@ -227,6 +283,7 @@ async function start(event) {
     if (!subdomain) return;
 
     line("info", `Installing into the account "${account.name}" as worker "${name}"…`);
+    line("info", "Everything heavy is streamed between the deployer and Cloudflare — this browser only sends the token and small JSON requests.");
     line("info", `Dashboard password for this install: ${password}`);
 
     const result = await runDeploy({
@@ -238,6 +295,7 @@ async function start(event) {
       jwtSecret,
       release: RELEASE,
       dryRun: type === "dryrun",
+      foregroundMs: 40000,
       onEvent: (e) => handleEvent(e, { password })
     });
 
@@ -249,7 +307,7 @@ async function start(event) {
     }
 
     const { url } = result;
-    line("success", "JB-Router successfully installed!");
+    line("success", result.health === "ok" ? "JB-Router successfully installed!" : "JB-Router installed — waiting for the URL to activate.");
     line("info", `Dashboard: ${url}/login `);
     appendLink(`${url}/login`, "open dashboard");
     line("info", `API endpoint (OpenAI compatible): `);
@@ -281,7 +339,7 @@ async function start(event) {
 function handleEvent(event, context) {
   switch (event.type) {
     case "step": {
-      if (event.state !== "active") break;
+      if (event.state !== "active") { endStatus(); break; }
       // The token check already happened while resolving the account.
       if (event.id === "verify" && verifyLogged) break;
       line("info", MESSAGES[event.id] || event.id);
@@ -290,8 +348,13 @@ function handleEvent(event, context) {
     case "event":
       return handleMilestone(event, context);
     case "progress": {
-      if (event.id === "assets" && event.total) {
-        line("info", `Uploaded ${event.received}/${event.total} asset files…`);
+      if (event.id === "bundle" || event.id === "assets") {
+        status(event.id, event.received, event.total);
+        if (event.id === "assets" && statusTracker && !statusTracker.warned &&
+            Date.now() - statusTracker.started > 45000) {
+          statusTracker.warned = true;
+          line("info", "This stage moves ~10 MB from your browser to Cloudflare — it is bounded by your upload speed, not by the installer.");
+        }
       }
       break;
     }
@@ -307,18 +370,21 @@ function handleMilestone(event, context) {
       line("success", `Token is active (id ${String(d.tokenId).slice(0, 8)}…).`);
       break;
     case "bundle.ok":
-      line("success", `Payload ready: ${d.files} files, ${mb(d.bytes)}${d.release ? ` (${d.release})` : ""}.`);
+      line("success", d.streamed
+        ? `Bundle ready: ${d.files} files${d.release ? ` (${d.release})` : ""} — served from the deployer, so nothing large is downloaded here.`
+        : `Payload ready: ${d.files} files, ${mb(d.bytes)}${d.release ? ` (${d.release})` : ""}.`);
       break;
     case "hash.ok":
       line("success", `Manifest built for ${d.files} files.`);
       break;
     case "session.ok":
-      line("success", d.pending
-        ? `Upload session ready — ${d.pending} files need uploading (${d.buckets} buckets).`
-        : "Upload session ready — every asset file is already on this account.");
+      if (!d.pending) { line("success", "Upload session ready — every asset file is already on this account."); break; }
+      line("success", d.streamed
+        ? `Upload session ready — ${d.pending} files will be streamed to Cloudflare from the deployer (${d.buckets} chunks, ${mb(d.pendingBytes || 0)}), not from your browser.`
+        : `Upload session ready — ${d.pending} files need uploading (${d.buckets} buckets).`);
       break;
     case "assets.ok":
-      line("success", `Static assets ready: ${d.total} files.`);
+      line("success", `Static assets ready: ${d.total} files${d.streamed ? " (streamed inside Cloudflare)" : ""}.`);
       break;
     case "script.ok":
       line("success", `Worker "${d.name}" deployed (deployment ${String(d.deploymentId).slice(0, 8)}…, assets: ${d.hasAssets}).`);
@@ -331,10 +397,19 @@ function handleMilestone(event, context) {
       appendLink(d.url, d.url);
       break;
     case "health.waiting":
-      line("info", "The workers.dev route is still propagating — retrying every 4 seconds…");
+      line("info", "The workers.dev route is still propagating — retrying every 2.5 seconds…");
       break;
     case "health.ok":
       line("success", `Health check passed in ${(d.ms / 1000).toFixed(1)}s.`);
+      break;
+    case "health.slow":
+      line("info", "The deployment is finished — only the workers.dev route is still warming up. The wizard is done; the check keeps running in the background.");
+      break;
+    case "health.late":
+      line("success", `Health check passed after ${Math.round(d.ms / 1000)}s — the panel is live.`);
+      break;
+    case "health.giveup":
+      line("info", "The URL did not answer yet; open the dashboard link below and refresh if needed.");
       break;
     case "health.timeout":
       line("error", "The Worker did not answer the health check in time. It usually comes up shortly — try the dashboard URL below.");
@@ -370,6 +445,7 @@ function storedTheme() {
 /* The dashboard re-applies the theme when the OS preference changes (useTheme hook) —
    same behaviour here while no explicit choice is stored in the wizard. */
 function watchSystemTheme() {
+  if (typeof window.matchMedia !== "function") return;
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const sync = () => {
     if (storedTheme() !== "system") return;
@@ -427,6 +503,7 @@ function boot() {
   });
 
   form.addEventListener("submit", start);
+  startHeartbeat();
 
   line("info", "Ready. Paste a Cloudflare API token and press Install.");
 }
