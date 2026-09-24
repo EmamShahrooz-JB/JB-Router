@@ -1,7 +1,7 @@
 {
   "name": "jb-router-app",
   "version": "0.5.86",
-  "description": "JB-Router web dashboard \u2014 Cloudflare Workers port of 9Router",
+  "description": "JB-Router web dashboard \u2014 Cloudflare Workers port of JB-Router",
   "private": true,
   "scripts": {
     "dev": "next dev --port 20127",

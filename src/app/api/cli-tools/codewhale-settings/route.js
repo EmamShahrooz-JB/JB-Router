@@ -29,9 +29,9 @@ const checkCodewhaleInstalled = async () => {
   }
 };
 
-const has9RouterConfig = (content) => {
+const hasJbRouterConfig = (content) => {
   if (!content) return false;
-  return content.includes("managed by 9Router") || content.includes("localhost:20128");
+  return content.includes("managed by JB-Router") || content.includes("localhost:20128");
 };
 
 const readConfig = async () => {
@@ -62,7 +62,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      has9Router: has9RouterConfig(content),
+      hasJbRouter: hasJbRouterConfig(content),
       configPath: getCodewhaleConfigPath(),
     });
   } catch (err) {
@@ -97,11 +97,11 @@ export async function POST(request) {
 
     existing.openai = {
       base_url: normalizedBaseUrl,
-      api_key: apiKey || "sk_9router",
+      api_key: apiKey || "sk_jbrouter",
       model: model || "provider/model-id",
     };
 
-    const header = "# CodeWhale config — managed by 9Router\n\n";
+    const header = "# CodeWhale config — managed by JB-Router\n\n";
     const content = header + stringifyTOML(existing);
 
     await fs.writeFile(configPath, content, "utf-8");
@@ -135,7 +135,7 @@ export async function DELETE() {
       await fs.writeFile(configPath, stringifyTOML(existing), "utf-8");
     }
 
-    return NextResponse.json({ success: true, message: "9Router removed from CodeWhale" });
+    return NextResponse.json({ success: true, message: "JB-Router removed from CodeWhale" });
   } catch (err) {
     return NextResponse.json({ error: { message: err.message } }, { status: 500 });
   }

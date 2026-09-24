@@ -7,14 +7,14 @@ Cloudflare API token and the Worker, static assets, Durable Object and secrets a
 The page is a single card with the steps list, install-type select, live terminal panel and
 success/quick-link toasts — the wizard *layout* popularised by
 [BPB-Wizard](https://github.com/bia-pain-bache/BPB-Wizard) (GPL-3.0, re-implemented from
-scratch — see [Credits](#credits)) — but **painted entirely with 9Router's own design tokens**,
+scratch — see [Credits](#credits)) — but **painted entirely with JB-Router's own design tokens**,
 copied from the dashboard's `src/app/globals.css`: brand orange `#E56A4A`, the light
 `#FDFAF6` / dark `#1a1a1a` neutral-warm surfaces, 10/14 px radii, the faint landing-grid
 overlay, Inter, and the same card/Button/Input recipes. It follows the dashboard's theme
 contract too: the `dark` class on `<html>` driven by the persisted `theme` key, plus a
 moon/sun toggle in the header.
 
-- **صفحهٔ زنده:** https://jb-deployer.emamshahroozjb-config-896.workers.dev
+- **صفحهٔ زنده:** https://jb-deployer.jb-router.workers.dev
 - بدون CLI، بدون Git، بدون GitHub — فقط یک API Token با قالب *Edit Cloudflare Workers*.
 
 ---
@@ -151,7 +151,7 @@ re-install **13.2 s**.
 
 Two independent influences, no code shared with either:
 
-1. **Colour, type and components** come from JB-Router's own dashboard, i.e. the 9Router theme
+1. **Colour, type and components** come from JB-Router's own dashboard, i.e. the JB-Router theme
    (`src/app/globals.css`): brand `#E56A4A` scale, warm neutrals, `--radius-brand` 10px,
    `--shadow-focus` ring, landing-grid overlay, favicon gradient `#f97815 → #c2590a`,
    Inter. The wizard reads the same `theme` localStorage key and toggles the same `dark`

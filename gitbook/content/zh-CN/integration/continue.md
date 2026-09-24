@@ -1,13 +1,13 @@
 # Continue VSCode 扩展集成
 
-将 9Router 与 Continue 扩展集成,直接在 Visual Studio Code 中获得 AI 协助。
+将 JB-Router 与 Continue 扩展集成,直接在 Visual Studio Code 中获得 AI 协助。
 
 ## 前置要求
 
 - 已安装 Visual Studio Code
 - 从 VSCode 市场安装了 Continue 扩展
-- 来自 [仪表盘](https://9router.com/dashboard) 的 9Router API key
-- 9Router 正在运行(本地或云端)
+- 来自 [仪表盘](https://YOUR-WORKER.workers.dev/dashboard) 的 JB-Router API key
+- JB-Router 正在运行(本地或云端)
 
 ## 配置步骤
 
@@ -18,7 +18,7 @@
 3. 输入 "Continue: Open Config" 并选择
 4. 这会打开 `~/.continue/config.json`
 
-### 2. 添加 9Router 模型配置
+### 2. 添加 JB-Router 模型配置
 
 将以下配置添加到 `config.json`:
 
@@ -27,7 +27,7 @@
 {
   "models": [
     {
-      "title": "9Router - Claude Opus",
+      "title": "JB-Router - Claude Opus",
       "provider": "openai",
       "model": "cc/claude-opus-4-5-20251101",
       "apiKey": "your-api-key-from-dashboard",
@@ -42,28 +42,28 @@
 {
   "models": [
     {
-      "title": "9Router - Claude Opus (Best)",
+      "title": "JB-Router - Claude Opus (Best)",
       "provider": "openai",
       "model": "cc/claude-opus-4-5-20251101",
       "apiKey": "your-api-key-from-dashboard",
       "apiBase": "http://localhost:20128/v1"
     },
     {
-      "title": "9Router - Claude Sonnet (Balanced)",
+      "title": "JB-Router - Claude Sonnet (Balanced)",
       "provider": "openai",
       "model": "cc/claude-sonnet-4-20250514",
       "apiKey": "your-api-key-from-dashboard",
       "apiBase": "http://localhost:20128/v1"
     },
     {
-      "title": "9Router - DeepSeek Chat (Code)",
+      "title": "JB-Router - DeepSeek Chat (Code)",
       "provider": "openai",
       "model": "cx/deepseek-chat",
       "apiKey": "your-api-key-from-dashboard",
       "apiBase": "http://localhost:20128/v1"
     },
     {
-      "title": "9Router - Claude Haiku (Fast)",
+      "title": "JB-Router - Claude Haiku (Fast)",
       "provider": "openai",
       "model": "cc/claude-haiku-4-20250514",
       "apiKey": "your-api-key-from-dashboard",
@@ -73,10 +73,10 @@
 }
 ```
 
-**云端 9Router:**
+**云端 JB-Router:**
 将 `apiBase` 替换为:
 ```json
-"apiBase": "https://9router.com/v1"
+"apiBase": "https://YOUR-WORKER.workers.dev/v1"
 ```
 
 ### 3. 保存并重新加载
@@ -89,7 +89,7 @@
 
 1. 打开 Continue 侧边栏(点击左侧 Continue 图标)
 2. 点击顶部模型选择下拉菜单
-3. 选择你偏好的 9Router 模型
+3. 选择你偏好的 JB-Router 模型
 
 ## 可用模型
 
@@ -139,7 +139,7 @@
 {
   "models": [
     {
-      "title": "9Router - Code Expert",
+      "title": "JB-Router - Code Expert",
       "provider": "openai",
       "model": "cx/deepseek-chat",
       "apiKey": "your-api-key",
@@ -158,7 +158,7 @@
 {
   "models": [
     {
-      "title": "9Router - Creative Writer",
+      "title": "JB-Router - Creative Writer",
       "provider": "openai",
       "model": "cc/claude-opus-4-5-20251101",
       "apiKey": "your-api-key",
@@ -204,13 +204,13 @@
 ## 故障排除
 
 ### 模型无响应
-- 确认 9Router 正在运行:`curl http://localhost:20128/health`
+- 确认 JB-Router 正在运行:`curl http://localhost:20128/health`
 - 检查 config.json 中的 API key
 - 查看 VSCode 开发者控制台错误:`Help` → `Toggle Developer Tools`
 
 ### 选错模型
 - 点击 Continue 侧边栏的模型下拉菜单
-- 选择正确的 9Router 模型
+- 选择正确的 JB-Router 模型
 - 模型名必须完全匹配(大小写敏感)
 
 ### 配置未加载
@@ -221,7 +221,7 @@
 ### 性能缓慢
 - 切换到更快的模型(haiku、flash)
 - 在 contextProviders 中减少上下文大小
-- 检查到 9Router 的网络延迟
+- 检查到 JB-Router 的网络延迟
 
 ## 最佳实践
 

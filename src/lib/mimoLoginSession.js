@@ -7,7 +7,7 @@
  *   3. Browser (via the src/proxy.js reverse proxy) completes login on the REAL
  *      page (password / whatever the page offers) — every account.xiaomi.com
  *      request passes through the proxy; Set-Cookie lands in OUR jar (which
- *      travels in the httpOnly 9r_mimo_login cookie between hops).
+ *      travels in the httpOnly jb_router_mimo_login cookie between hops).
  *   4. SPA navigates to the sts callback -> rewritten to /__mimo_login/mimo/*,
  *      middleware takes over and follows the chain server-side:
  *      sts -> Set-Cookie serviceToken -> me (200 JSON = logged in).
@@ -17,7 +17,7 @@
  */
 
 const ACCOUNT_HOST = "account.xiaomi.com";
-export const SESSION_COOKIE = "9r_mimo_login";
+export const SESSION_COOKIE = "jb_router_mimo_login";
 const SESSION_TTL_MS = 15 * 60 * 1000;
 const API_UA =
   "miNative PC/Normal Windows_NT/10.0.19045 SDKV/1.0.0 DEVT/PC DEVS/Windows APP/miaccount_desktop APPV/0.1.0";
@@ -25,7 +25,7 @@ const SSO_UA = "MiClaw/1.0";
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// Paths that belong to the 9router app itself — never proxy these upstream,
+// Paths that belong to the jb-router app itself — never proxy these upstream,
 // even while a login session is active. Everything else is fair game: the
 // login SPA hits evolving endpoints (/pass2/config, /v3/...), so a static
 // allowlist rots fast. (Edge-safe: plain strings only.)
@@ -535,7 +535,7 @@ function browserCookieHeader(req) {
 const STRIP_UPSTREAM_HEADERS = new Set([
   "host", "cookie", "connection", "content-length", "transfer-encoding",
   "keep-alive", "upgrade", "expect", "proxy-connection",
-  // Credentials for 9router itself — must never reach a third-party upstream.
+  // Credentials for jb-router itself — must never reach a third-party upstream.
   "authorization", "proxy-authorization",
 ]);
 
@@ -546,7 +546,7 @@ const STRIP_UPSTREAM_HEADERS = new Set([
  */
 export async function proxyAccountRequest(sess, req, origin) {
   const u = new URL(req.url);
-  u.searchParams.delete("__9r_sess"); // never forward our session to upstream
+  u.searchParams.delete("__jb_router_sess"); // never forward our session to upstream
   const upstream = new URL(u.pathname + u.search, `https://${ACCOUNT_HOST}`);
 
   // The SPA's callback params were rewritten to our proxy — undo before upstream
@@ -716,7 +716,7 @@ h1{font-size:1.1rem;margin:.2rem 0 .6rem}p{opacity:.8;font-size:.9rem;line-heigh
 }
 
 function donePage() {
-  return htmlPage("登录成功 ✅", ["账号会话已捕获，可以关闭此窗口。", "回到 9router 弹窗继续。"], true);
+  return htmlPage("登录成功 ✅", ["账号会话已捕获，可以关闭此窗口。", "回到 jb-router 弹窗继续。"], true);
 }
 
 function pendingPage() {

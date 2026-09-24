@@ -249,7 +249,7 @@ error inside the message. The dashboard probe displayed that wrapper verbatim, s
 blocked-but-reachable providers looked like an outage.
 
 Fixes:
-- `open-sse/utils/requestFlags.js` — new `x-9r-force-test` flag. Explicit
+- `open-sse/utils/requestFlags.js` — new `x-jb-router-force-test` flag. Explicit
   dashboard probes (single model and "test all models") bypass recorded
   cooldowns so they always reach the provider: `getProviderCredentials` accepts
   `{ ignoreModelLocks }`, and chat / embeddings / images / stt / tts / systemone
@@ -306,7 +306,7 @@ Published as **JB-Router** — https://github.com/EmamShahrooz-JB/JB-Router (MIT
 
 - `README.md` describes the port, quick-start deploy, configuration and the
   architecture; `CONTRIBUTING.md` and `SECURITY.md` were added; `LICENSE` keeps the
-  upstream 9Router copyright next to the JB-Router modification notice.
+  upstream JB-Router copyright next to the JB-Router modification notice.
 - Upstream `.github/workflows/docker-publish.yml` (which pushed images under the
   upstream Docker Hub/GHCR namespaces) was removed; the GitBook pages workflow is now
   `workflow_dispatch`-only so unrelated pushes do not carry a failing check.
@@ -315,7 +315,7 @@ Published as **JB-Router** — https://github.com/EmamShahrooz-JB/JB-Router (MIT
   and this document uses a placeholder deployment URL.
 - GitHub push protection flagged the Gemini CLI and Antigravity OAuth client
   id/secret pairs (the installed-app credentials those official clients ship with,
-  also published by upstream 9Router). They were restored with recorded
+  also published by upstream JB-Router). They were restored with recorded
   push-protection bypasses (reason `false_positive`) because the OAuth logins need
   them. Secret scanning also reports one `Google API Key` alert for the public
   Windsurf/Codeium key in `open-sse/providers/registry/windsurf.js`; it is a

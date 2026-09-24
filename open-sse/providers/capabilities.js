@@ -486,13 +486,13 @@ let catalogSource = null;
  */
 export function setCatalogSource(source) {
   catalogSource = source;
-  if (typeof globalThis !== "undefined") globalThis.__9rCatalogSource = source;
+  if (typeof globalThis !== "undefined") globalThis.__jbRouterCatalogSource = source;
 }
 
 function getCatalogSource() {
   if (catalogSource) return catalogSource;
   if (typeof globalThis === "undefined") return null;
-  return (catalogSource = globalThis.__9rCatalogSource || null);
+  return (catalogSource = globalThis.__jbRouterCatalogSource || null);
 }
 
 // Apply the synced catalog + name heuristic on top of a table-resolved result.

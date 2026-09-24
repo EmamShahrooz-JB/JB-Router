@@ -19,7 +19,7 @@ with a full web dashboard, usage analytics, combos and durable storage.
 
 ## What is JB-Router?
 
-JB-Router is a **Cloudflare Workers port of [9Router](https://github.com/decolua/9router)** —
+JB-Router is a **Cloudflare Workers port of [JB-Router](github.com/EmamShahrooz-JB/JB-Router)** —
 the same Next.js App Router application (same UI, same routing engine, same provider
 registry), compiled with [OpenNext](https://opennext.js.org/cloudflare) and served from a
 single Worker:
@@ -51,7 +51,7 @@ single Worker:
 Paste your own Cloudflare API token into the web deployer and JB-Router is installed on **your**
 account in about 20 seconds — Worker, static assets, Durable Object and the two secrets:
 
-**→ https://jb-deployer.emamshahroozjb-config-896.workers.dev**
+**→ https://jb-deployer.jb-router.workers.dev**
 
 The page runs on a small Worker (`deployer/`) because `api.cloudflare.com` sends no CORS headers —
 so the browser cannot talk to it directly. The proxy uses *your* token only for the requests you
@@ -160,7 +160,7 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 | --- | --- |
 | `JWT_SECRET` | Signs dashboard session cookies (secret) |
 | `INITIAL_PASSWORD` | First-login dashboard password (secret; change it in Profile) |
-| `DATA_DIR` | Filesystem scratch path used by legacy import/backup paths on Workers (`/tmp/.9router`) |
+| `DATA_DIR` | Filesystem scratch path used by legacy import/backup paths on Workers (`/tmp/.jb-router`) |
 | `AUTH_COOKIE_SECURE` | Set `"true"` on HTTPS deployments so session cookies are `Secure` |
 | `ROUTER_DATABASE` | Durable Object binding for the database (configured in `wrangler.jsonc`) |
 
@@ -172,23 +172,23 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 | --- | --- |
 | **Deploy-ready build** | [`v0.5.86`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.86) — `jb-router-v0.5.86-opennext-bundle.zip` (unzip and `wrangler deploy`) |
 | **CLI** | `cli/` is published as the [`jb-router-cli`](https://www.npmjs.com/package/jb-router-cli) npm package (bin: `jb-router`). Publishing runs from the *Publish CLI to npm* workflow with an `NPM_TOKEN` secret, because the CLI embeds a full production build |
-| **Web deployer** | [`deployer/`](./deployer) — the `jb-deployer` Worker that installs JB-Router on any account from the browser (live: <https://jb-deployer.emamshahroozjb-config-896.workers.dev>) |
+| **Web deployer** | [`deployer/`](./deployer) — the `jb-deployer` Worker that installs JB-Router on any account from the browser (live: <https://jb-deployer.jb-router.workers.dev>) |
 | **Edge Lite (prototype)** | [JB-Router-Edge-Lite](https://github.com/EmamShahrooz-JB/JB-Router-Edge-Lite) — the early small Hono + static-dashboard Worker, kept for reference only |
 
 ## Credits & attribution
 
-JB-Router is a **Cloudflare Workers port of [9Router](https://github.com/decolua/9router)**
+JB-Router is a **Cloudflare Workers port of [JB-Router](github.com/EmamShahrooz-JB/JB-Router)**
 by [decolua](https://github.com/decolua) and contributors. The dashboard UI, provider
 registry, routing/combo engine and translators originate from that project; this repository
 adds the Workers runtime port (Durable Object SQLite storage, OpenNext packaging, internal
 request transport, probe/health fixes) and the JB-Router branding.
 
 Upstream documentation is kept in [`gitbook/`](./gitbook), [`README.zh-CN.md`](./README.zh-CN.md)
-and [`i18n/`](./i18n) and may still reference 9Router naming.
+and [`i18n/`](./i18n) and may still reference JB-Router naming.
 
 ## License
 
-[MIT](./LICENSE) — original copyright © 2024-2026 decolua and contributors (9Router),
+[MIT](./LICENSE) — original copyright © 2024-2026 decolua and contributors (JB-Router),
 JB-Router modifications © 2026 EmamShahrooz-JB and contributors.
 
 ## Security

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import NineRemotePromoModal from "./NineRemotePromoModal";
+import JbRemotePromoModal from "./JbRemotePromoModal";
 
-export default function NineRemoteButton() {
+export default function JbRemoteButton() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -11,13 +11,13 @@ export default function NineRemoteButton() {
       <button
         onClick={() => setIsOpen(true)}
         className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5"
-        title="9Remote"
+        title="JB-Router"
       >
         <span className="material-symbols-outlined text-[18px]">computer</span>
         <span className="text-xs font-medium">Remote</span>
       </button>
 
-      <NineRemotePromoModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <JbRemotePromoModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </>
   );
 }

@@ -29,9 +29,9 @@ const checkForgeInstalled = async () => {
   }
 };
 
-const has9RouterConfig = (content) => {
+const hasJbRouterConfig = (content) => {
   if (!content) return false;
-  return content.includes("managed by 9Router") || content.includes("localhost:20128");
+  return content.includes("managed by JB-Router") || content.includes("localhost:20128");
 };
 
 const readConfig = async () => {
@@ -62,7 +62,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      has9Router: has9RouterConfig(content),
+      hasJbRouter: hasJbRouterConfig(content),
       configPath: getForgeConfigPath(),
     });
   } catch (err) {
@@ -96,12 +96,12 @@ export async function POST(request) {
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
 
     existing.openai = {
-      api_key: apiKey || "sk_9router",
+      api_key: apiKey || "sk_jbrouter",
       base_url: normalizedBaseUrl,
       model: model || "provider/model-id",
     };
 
-    const header = "# Forge config — managed by 9Router\n\n";
+    const header = "# Forge config — managed by JB-Router\n\n";
     const content = header + stringifyTOML(existing);
 
     await fs.writeFile(configPath, content, "utf-8");
@@ -135,7 +135,7 @@ export async function DELETE() {
       await fs.writeFile(configPath, stringifyTOML(existing), "utf-8");
     }
 
-    return NextResponse.json({ success: true, message: "9Router removed from ForgeCode" });
+    return NextResponse.json({ success: true, message: "JB-Router removed from ForgeCode" });
   } catch (err) {
     return NextResponse.json({ error: { message: err.message } }, { status: 500 });
   }

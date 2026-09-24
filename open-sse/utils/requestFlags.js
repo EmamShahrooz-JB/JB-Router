@@ -6,7 +6,7 @@
  */
 
 /** Header set by the dashboard "test model" probes. */
-export const FORCE_TEST_HEADER = "x-9r-force-test";
+export const FORCE_TEST_HEADER = "x-jb-router-force-test";
 
 /**
  * True when the request is an explicit user-triggered connectivity probe

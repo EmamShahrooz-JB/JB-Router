@@ -13,20 +13,20 @@ import {
 export default async function proxy(request) {
   // Xiaomi account session-login proxy (src/lib/mimoLoginSession.js).
   // Session state (region + accumulated cookie jar) travels in the httpOnly
-  // 9r_mimo_login cookie — route handlers and this proxy run in separate
+  // jb_router_mimo_login cookie — route handlers and this proxy run in separate
   // bundles, so module-level maps are NOT shared. The cookie is only set by
   // the auth-gated login/start route, and the branch below ALSO requires a
-  // valid dashboard session: a forged 9r_mimo_login cookie (client-controlled
+  // valid dashboard session: a forged jb_router_mimo_login cookie (client-controlled
   // header, unsigned payload) must never turn the app into an unauthenticated
   // forwarder. No URL-carried session — it would leak the jar via history/logs/Referer.
   const cookies = request.headers.get("cookie") || "";
-  const hasSessionCookie = cookies.includes("9r_mimo_login=");
+  const hasSessionCookie = cookies.includes("jb_router_mimo_login=");
   const { pathname } = request.nextUrl;
   if (hasSessionCookie && !(await isAuthenticated(request))) {
     // Forged or stale session cookie without dashboard auth — drop it early.
     const res = await dashboardProxy(request);
     const headers = new Headers(res.headers);
-    headers.append("Set-Cookie", "9r_mimo_login=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    headers.append("Set-Cookie", "jb_router_mimo_login=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
     return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
   }
   if (!hasSessionCookie && /^\/(fe\/|pass)/.test(pathname) && !pathname.startsWith("/_next")) {
@@ -61,7 +61,7 @@ export default async function proxy(request) {
   if (hasSessionCookie) {
     const res = await dashboardProxy(request);
     const headers = new Headers(res.headers);
-    headers.append("Set-Cookie", "9r_mimo_login=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    headers.append("Set-Cookie", "jb_router_mimo_login=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
     return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
   }
 

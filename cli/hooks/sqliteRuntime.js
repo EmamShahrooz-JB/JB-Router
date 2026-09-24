@@ -18,8 +18,8 @@ const SQL_JS_VERSION = "1.14.1";
 function getDataDir() {
   if (process.env.DATA_DIR) return process.env.DATA_DIR;
   return process.platform === "win32"
-    ? path.join(process.env.APPDATA || os.homedir(), "9router")
-    : path.join(os.homedir(), ".9router");
+    ? path.join(process.env.APPDATA || os.homedir(), "jb-router")
+    : path.join(os.homedir(), ".jb-router");
 }
 
 function getRuntimeDir() {
@@ -38,10 +38,10 @@ function ensureRuntimeDir() {
   const pkgPath = path.join(dir, "package.json");
   if (!fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify({
-      name: "9router-runtime",
+      name: "jb-router-runtime",
       version: "1.0.0",
       private: true,
-      description: "User-writable runtime deps for 9router (better-sqlite3 native binary)",
+      description: "User-writable runtime deps for jb-router (better-sqlite3 native binary)",
     }, null, 2));
   }
   return dir;

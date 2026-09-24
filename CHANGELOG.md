@@ -232,7 +232,7 @@
   13.0.3 ships per-platform prebuilds, `--ignore-scripts` skips the implicit
   node-gyp build); Node < 22 stays on 12.6.2, working installs untouched
 - **CLI tools**: send the API key Codex actually reads —
-  `[model_providers.9router.http_headers]` instead of auth.json (which left
+  `[model_providers.jb-router.http_headers]` instead of auth.json (which left
   every request 401 and clobbered an existing ChatGPT login); subagent model
   moved to `agents.default_subagent_model`
 - **OAuth**: refresh Cline tokens with the extension JSON contract
@@ -312,13 +312,13 @@
 - **i18n**: add Spanish, French, and Brazilian Portuguese README translations
 
 ## Security
-- **Real IP**: `x-9r-real-ip` and the Host fallback were trusted from
+- **Real IP**: `x-jb-router-real-ip` and the Host fallback were trusted from
   client-controlled headers whenever `custom-server.js` was not in the request
   path (`npm run start`, `start:bun`), letting a remote caller pose as local to
   skip API key auth and reach `LOCAL_ONLY_PATHS` (`/api/mcp/*`,
   `/api/tunnel/enable`, `/api/auth/reset-password`). The server now stamps a
-  per-process `x-9r-peer-token` on every request it sanitizes and only trusts
-  `x-9r-real-ip` behind it — falling back to Host in development and failing
+  per-process `x-jb-router-peer-token` on every request it sanitizes and only trusts
+  `x-jb-router-real-ip` behind it — falling back to Host in development and failing
   closed in production (GHSA-pjm4-8fpg-f9p6). Also fixes IPv6 loopback
   detection (`::1`, `::ffff:127.0.0.1`) and routes `npm run start` /
   `start:bun` through `custom-server.js`
@@ -333,7 +333,7 @@
 ## Features
 - **Providers**: add TokenRouter (300+ models via OpenAI-compatible gateway) with
   exact per-model pricing for 110 models and `reasoning_effort` thinking config
-- **Providers**: add Self-hosted STT / TTS / Embedding — point 9Router at your own
+- **Providers**: add Self-hosted STT / TTS / Embedding — point JB-Router at your own
   OpenAI-compatible speech and embedding servers (whisper.cpp, faster-whisper,
   Kokoro-FastAPI, llama-server, vLLM, Infinity). Unlike the named cloud providers
   these read `baseUrl` per connection, so one provider can front several machines
@@ -467,7 +467,7 @@
 - **CLI tools**: Grok Build setup — choose separate main/general-purpose/explore/plan models and preserve each model's context window
 - **GitHub Copilot**: route Claude models through Copilot's native `/v1/messages`
 - **Kiro**: add GPT-5.6 model family (#2596)
-- **RTK**: `X-9Router-Token-Saver` header to bypass token savers per request
+- **RTK**: `X-JB-Router-Token-Saver` header to bypass token savers per request
 - **Providers**: quota visibility settings
 - **Translator**: drop temperature for all Claude models
 - **i18n**: Thai (th) + Persian (fa) translations / README
@@ -717,7 +717,7 @@
 - Dashboard: show provider node name instead of connection name in topology (#1770) + show explicit `kind="llm"` combos on combos page (#1684)
 
 ## Docs
-- README: add Indonesian 9Router tutorial video (#1709)
+- README: add Indonesian JB-Router tutorial video (#1709)
 
 # v0.4.71 (2026-06-06)
 
@@ -734,7 +734,7 @@
 - Codex: durable OAuth refresh lifecycle (#1664)
 - Tunnel: skip virtual interfaces to prevent false netchange watchdog
 - Claude: fix forced tool_choice 400 on cc/ OAuth route (#1592)
-- Proxy: raise Next client body limit to 128MB via `NINEROUTER_PROXY_CLIENT_MAX_BODY_SIZE` (#1529, #1572)
+- Proxy: raise Next client body limit to 128MB via `JB_ROUTER_PROXY_CLIENT_MAX_BODY_SIZE` (#1529, #1572)
 - MiniMax: echo `reasoning_content` on follow-up turns to avoid 400 (#1543)
 - Kiro: handle 400 on tool-bearing history without client tools; add mappable "auto" model slot; fix binary EventStream crash + add models & TTS tool filtering
 - Antigravity: passthrough tab-autocomplete + mark default agent slot mandatory

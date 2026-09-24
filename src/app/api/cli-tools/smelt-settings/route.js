@@ -28,10 +28,10 @@ const checkSmeltInstalled = async () => {
   }
 };
 
-const has9RouterConfig = (settings) => {
+const hasJbRouterConfig = (settings) => {
   if (!settings) return false;
   return (
-    settings._managedBy === "9router" ||
+    settings._managedBy === "jb-router" ||
     (typeof settings.baseUrl === "string" && settings.baseUrl.length > 0 && settings.baseUrl.includes("20128"))
   );
 };
@@ -61,7 +61,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      has9Router: has9RouterConfig(config),
+      hasJbRouter: hasJbRouterConfig(config),
       configPath: getSmeltConfigPath(),
     });
   } catch (err) {
@@ -96,9 +96,9 @@ export async function POST(request) {
     const updated = {
       ...existing,
       baseUrl: normalizedBaseUrl,
-      apiKey: apiKey || "sk_9router",
+      apiKey: apiKey || "sk_jbrouter",
       model: model || existing.model || "provider/model-id",
-      _managedBy: "9router",
+      _managedBy: "jb-router",
     };
 
     await fs.writeFile(configPath, JSON.stringify(updated, null, 2), "utf-8");
@@ -135,7 +135,7 @@ export async function DELETE() {
       await fs.writeFile(configPath, JSON.stringify(existing, null, 2), "utf-8");
     }
 
-    return NextResponse.json({ success: true, message: "Smelt 9Router settings removed" });
+    return NextResponse.json({ success: true, message: "Smelt JB-Router settings removed" });
   } catch (err) {
     return NextResponse.json({ error: { message: err.message } }, { status: 500 });
   }

@@ -1,25 +1,25 @@
 ---
-name: 9router-web-search
-description: Web and X search via 9Router /v1/search using Tavily / Exa / Brave / Serper / SearXNG / Google PSE / Linkup / SearchAPI / You.com / Perplexity / Xquik. Use when the user wants to search the web, find articles, or search public X posts.
+name: jb-router-web-search
+description: Web and X search via JB-Router /v1/search using Tavily / Exa / Brave / Serper / SearXNG / Google PSE / Linkup / SearchAPI / You.com / Perplexity / Xquik. Use when the user wants to search the web, find articles, or search public X posts.
 ---
 
-# 9Router — Web Search
+# JB-Router — Web Search
 
-Requires `NINEROUTER_URL` (and `NINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router/SKILL.md for setup.
+Requires `JB_ROUTER_URL` (and `JB_ROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/EmamShahrooz-JB/JB-Router/refs/heads/master/skills/jb-router/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $NINEROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webSearch") | .id'
+curl $JB_ROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webSearch") | .id'
 # Per-provider params (searchTypes, maxResults, required options like cx for google-pse)
-curl "$NINEROUTER_URL/v1/models/info?id=tavily/search"
+curl "$JB_ROUTER_URL/v1/models/info?id=tavily/search"
 ```
 
 IDs end in `/search` (e.g. `tavily/search`). Combos (`owned_by:"combo"`) chain providers with auto-fallback.
 
 ## Endpoint
 
-`POST $NINEROUTER_URL/v1/search`
+`POST $JB_ROUTER_URL/v1/search`
 
 | Field | Required | Notes |
 |---|---|---|
@@ -32,18 +32,18 @@ IDs end in `/search` (e.g. `tavily/search`). Combos (`owned_by:"combo"`) chain p
 ## Examples
 
 ```bash
-curl -X POST $NINEROUTER_URL/v1/search \
-  -H "Authorization: Bearer $NINEROUTER_KEY" \
+curl -X POST $JB_ROUTER_URL/v1/search \
+  -H "Authorization: Bearer $JB_ROUTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"tavily","query":"9Router open source","max_results":5}'
+  -d '{"model":"tavily","query":"JB-Router open source","max_results":5}'
 ```
 
 JS:
 
 ```js
-const r = await fetch(`${process.env.NINEROUTER_URL}/v1/search`, {
+const r = await fetch(`${process.env.JB_ROUTER_URL}/v1/search`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.NINEROUTER_KEY}`, "Content-Type": "application/json" },
+  headers: { "Authorization": `Bearer ${process.env.JB_ROUTER_KEY}`, "Content-Type": "application/json" },
   body: JSON.stringify({ model: "search-combo", query: "latest LLM benchmarks", max_results: 10 }),
 });
 console.log(await r.json());
@@ -52,13 +52,13 @@ console.log(await r.json());
 X search with Xquik:
 
 ```bash
-curl -X POST $NINEROUTER_URL/v1/search \
-  -H "Authorization: Bearer $NINEROUTER_KEY" \
+curl -X POST $JB_ROUTER_URL/v1/search \
+  -H "Authorization: Bearer $JB_ROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"xquik","query":"from:github release","max_results":10,"provider_options":{"queryType":"Latest"}}'
 ```
 
-Add the Xquik API key in 9Router's provider settings. Xquik charges 1 credit per returned post. Continue a search by passing `pagination.next_cursor` as `provider_options.cursor`.
+Add the Xquik API key in JB-Router's provider settings. Xquik charges 1 credit per returned post. Continue a search by passing `pagination.next_cursor` as `provider_options.cursor`.
 
 Xquik responses include provider pagination and credit usage:
 
@@ -74,7 +74,7 @@ Xquik responses include provider pagination and credit usage:
 ```json
 {
   "provider": "tavily",
-  "query": "9Router open source",
+  "query": "JB-Router open source",
   "results": [
     {
       "title": "...", "url": "https://...", "display_url": "github.com/...",

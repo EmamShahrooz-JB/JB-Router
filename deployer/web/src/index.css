@@ -3,7 +3,7 @@
 @variant light (&:is(.light *));
 
 @theme {
-  /* Brand — the 9Router/JB-Router palette in both themes (dark values live in .dark) */
+  /* Brand — the JB-Router/JB-Router palette in both themes (dark values live in .dark) */
   --color-brand-primary: #e56a4a;
   --color-brand-hover: #cc5236;
   --color-brand-soft: rgba(229, 106, 74, 0.12);
@@ -41,7 +41,7 @@
 }
 
 .dark {
-  /* Brand — matches the original 9Router/JB-Router dark theme */
+  /* Brand — matches the original JB-Router/JB-Router dark theme */
   --color-brand-primary: #e56a4a;
   --color-brand-hover: #cc5236;
   --color-brand-soft: rgba(229, 106, 74, 0.15);

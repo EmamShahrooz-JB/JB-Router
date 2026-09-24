@@ -1,7 +1,7 @@
 /**
  * Security invariants of the server-assisted MiMo login proxy
  * (src/lib/mimoLoginSession.js):
- *  - credentials bound to 9router's own origin are never forwarded upstream
+ *  - credentials bound to jb-router's own origin are never forwarded upstream
  *  - upstream Set-Cookie is never replayed onto the app's own cookie jar
  */
 import { describe, it, expect } from "vitest";

@@ -20,7 +20,7 @@ test("getClineAccessToken does NOT prefix ClinePass API keys", () => {
   // ClinePass API keys are opaque strings (e.g. clp_…). Sending them as
   // `workos:clp_…` makes api.cline.bot respond 401.
   assert.equal(getClineAccessToken("clp_1234567890abcdef"), "clp_1234567890abcdef");
-  assert.equal(getClineAccessToken("sk-9r-abcdef"), "sk-9r-abcdef");
+  assert.equal(getClineAccessToken("sk-jbrouter-abcdef"), "sk-jbrouter-abcdef");
   assert.equal(getClineAccessToken(""), "");
   assert.equal(getClineAccessToken("   "), "");
   assert.equal(getClineAccessToken(undefined), "");

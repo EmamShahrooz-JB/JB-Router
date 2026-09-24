@@ -1,7 +1,7 @@
 # Contributing to JB-Router
 
 Thanks for helping! This project is a Cloudflare Workers port of
-[9Router](https://github.com/decolua/9router); upstream parity matters, so please keep the
+[JB-Router](github.com/EmamShahrooz-JB/JB-Router); upstream parity matters, so please keep the
 dashboard UI, provider registry and routing semantics intact unless the change is the point.
 
 ## Getting set up

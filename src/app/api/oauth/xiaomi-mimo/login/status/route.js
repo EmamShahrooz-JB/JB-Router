@@ -40,6 +40,6 @@ export async function GET(request) {
   const payload = { status: "done", region: sess.region, ...id };
   // One-shot: don't let the identity linger past the client reading it.
   const res = NextResponse.json(payload);
-  res.cookies.set("9r_mimo_login", "", { path: "/", httpOnly: true, maxAge: 0 });
+  res.cookies.set("jb_router_mimo_login", "", { path: "/", httpOnly: true, maxAge: 0 });
   return res;
 }

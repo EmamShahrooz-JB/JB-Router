@@ -6,7 +6,7 @@ import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { FORCE_TEST_HEADER } from "open-sse/utils/requestFlags.js";
 import { describeUpstreamFailure } from "open-sse/utils/upstreamStatus.js";
 
-const CLI_TOKEN_SALT = "9r-cli-auth";
+const CLI_TOKEN_SALT = "jb-router-cli-auth";
 
 function createSilentWavFile() {
   const sampleRate = 16000;
@@ -50,7 +50,7 @@ export async function getInternalHeaders() {
 
   const headers = { "Content-Type": "application/json" };
   if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-  headers["x-9r-cli-token"] = await getConsistentMachineId(CLI_TOKEN_SALT);
+  headers["x-jb-router-cli-token"] = await getConsistentMachineId(CLI_TOKEN_SALT);
   // Explicit user-triggered probe: reach the provider even if an earlier failure
   // put the model in cooldown, so the reported result is the real upstream answer.
   headers[FORCE_TEST_HEADER] = "1";

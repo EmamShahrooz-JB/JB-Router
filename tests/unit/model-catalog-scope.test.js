@@ -5,7 +5,7 @@ import path from "node:path";
 
 // Both modules read their file path from DATA_DIR at import time, so the temp
 // data dir has to be in place before the first import.
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "9r-catalog-"));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "jb-router-catalog-"));
 process.env.DATA_DIR = dataDir;
 const catalogFile = path.join(dataDir, "model-catalog.json");
 
@@ -112,7 +112,7 @@ describe("model catalog", () => {
     try {
       // The server bundles this module into more than one chunk and the startup
       // hook only runs in one of them, so the slot has to be process-wide.
-      expect(globalThis.__9rCatalogSource).toBe(source);
+      expect(globalThis.__jbRouterCatalogSource).toBe(source);
       const other = await import("../../open-sse/providers/capabilities.js?copy=2");
       expect(other.getCapabilitiesForModel).not.toBe(capabilities.getCapabilitiesForModel);
       // ...and that second copy resolves through the source it never installed
@@ -120,7 +120,7 @@ describe("model catalog", () => {
     } finally {
       capabilities.setCatalogSource(null);
     }
-    expect(globalThis.__9rCatalogSource).toBeNull();
+    expect(globalThis.__jbRouterCatalogSource).toBeNull();
   });
 });
 

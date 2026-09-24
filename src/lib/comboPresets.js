@@ -1,7 +1,7 @@
 /**
  * Build Cursor / Claude default combo presets.
  * Combo names match client-native model IDs (no provider prefix);
- * each is seeded with the matching prefixed 9router model so routing works.
+ * each is seeded with the matching prefixed jb-router model so routing works.
  */
 
 import { getProviderModels } from "open-sse/config/providerModels.js";

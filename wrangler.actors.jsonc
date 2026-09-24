@@ -10,7 +10,7 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "DATA_DIR": "/tmp/.9router",
+    "DATA_DIR": "/tmp/.jb-router",
     "AUTH_COOKIE_SECURE": "false",
     "INITIAL_PASSWORD": "local-regression-only-not-production",
     "JWT_SECRET": "local-regression-jwt-key-not-for-production-0123456789"

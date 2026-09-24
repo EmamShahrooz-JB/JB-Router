@@ -75,7 +75,7 @@ function desktopCookiePath() {
 async function readDesktopAccountCookies() {
   const src = desktopCookiePath();
   if (!fs.existsSync(src)) return null;
-  const tmp = path.join(os.tmpdir(), `9r-mimo-cookies-${process.pid}-${crypto.randomBytes(4).toString("hex")}.db`);
+  const tmp = path.join(os.tmpdir(), `jb-router-mimo-cookies-${process.pid}-${crypto.randomBytes(4).toString("hex")}.db`);
   try {
     fs.copyFileSync(src, tmp);
   } catch {

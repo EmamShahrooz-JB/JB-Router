@@ -42,7 +42,7 @@ RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
       sed -i "s|dl-cdn.alpinelinux.org|${ALPINE_MIRROR}|g" /etc/apk/repositories; \
     fi
 
-LABEL org.opencontainers.image.title="9router" \
+LABEL org.opencontainers.image.title="jb-router" \
       org.opencontainers.image.version="${APP_VERSION}"
 
 ENV NODE_ENV=production
@@ -70,7 +70,7 @@ COPY --from=builder /app/node_modules/node-machine-id ./node_modules/node-machin
 
 RUN mkdir -p /app/data && chown -R node:node /app && \
   mkdir -p /app/data-home && chown node:node /app/data-home && \
-  ln -sf /app/data-home /root/.9router 2>/dev/null || true
+  ln -sf /app/data-home /root/.jb-router 2>/dev/null || true
 
 # Avoid a full distribution upgrade in the runtime image. It makes builds less
 # reproducible and is unrelated to installing the runtime entrypoint helper.

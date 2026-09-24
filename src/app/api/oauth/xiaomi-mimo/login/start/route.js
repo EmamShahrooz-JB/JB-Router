@@ -8,7 +8,7 @@ import { beginSession, encodeSessionCookie, rewriteMimoBases, absorbSetCookies a
  *
  * Walks the first two hops of the Desktop login surface server-side
  * (me -> 302 account/pass/serviceLogin -> 302 /fe/service/login) and hands
- * the browser a same-origin pageUrl carrying the 9r_mimo_login session cookie.
+ * the browser a same-origin pageUrl carrying the jb_router_mimo_login session cookie.
  * All subsequent account.xiaomi.com traffic flows through src/proxy.js.
  *
  * Egress resolution: MIMO_LOGIN_PROXY env > (region=sgp: probe common LOCAL

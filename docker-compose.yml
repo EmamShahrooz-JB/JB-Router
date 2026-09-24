@@ -1,12 +1,12 @@
 services:
-  9router:
-    image: decolua/9router:latest
-    container_name: 9router
+  jb-router:
+    image: EmamShahrooz-JB/JB-Router:latest
+    container_name: jb-router
     restart: always
     ports:
       - "20128:20128"
     volumes:
-      - 9router-data:/app/data
+      - jb-router-data:/app/data
     env_file:
       - .env
     environment:
@@ -26,5 +26,5 @@ services:
       - "8787:8787"
 
 volumes:
-  9router-data:
-    name: 9router-data
+  jb-router-data:
+    name: jb-router-data

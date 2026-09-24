@@ -33,7 +33,16 @@ export default {
       }
     }
 
-    // everything else is the static page + deploy payload
+    // The deploy payload changes on every release: never let an edge/browser cache hand a
+    // visitor a chunk that no longer matches the manifest.
+    if (url.pathname.startsWith("/bundle/")) {
+      const res = await env.ASSETS.fetch(request);
+      const out = new Response(res.body, res);
+      out.headers.set("cache-control", "no-store");
+      return out;
+    }
+
+    // everything else is the static page
     return env.ASSETS.fetch(request);
   }
 };
@@ -44,8 +53,12 @@ async function handleApi(request, env, url) {
   }
 
   switch (url.pathname) {
-    case "/api/meta":
-      return env.ASSETS.fetch(new Request(new URL("/bundle/meta.json", url.origin)));
+    case "/api/meta": {
+      const res = await env.ASSETS.fetch(new Request(new URL("/bundle/meta.json", url.origin)));
+      const out = new Response(res.body, res);
+      out.headers.set("cache-control", "no-store");
+      return out;
+    }
     case "/api/health":
       return healthProbe(request);
     case "/api/verify":
@@ -344,7 +357,7 @@ async function deployScript(request, env, url) {
     bindings: [
       { type: "assets", name: "ASSETS" },
       { type: "durable_object_namespace", name: "ROUTER_DATABASE", class_name: "RouterDatabase" },
-      { type: "plain_text", name: "DATA_DIR", text: "/tmp/.9router" },
+      { type: "plain_text", name: "DATA_DIR", text: "/tmp/.jb-router" },
       { type: "plain_text", name: "AUTH_COOKIE_SECURE", text: "true" },
       ...(body.jwtSecret ? [{ type: "secret_text", name: "JWT_SECRET", text: String(body.jwtSecret) }] : []),
       ...(body.password ? [{ type: "secret_text", name: "INITIAL_PASSWORD", text: String(body.password) }] : [])

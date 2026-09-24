@@ -4,7 +4,7 @@ const cfg = defineCloudflareConfig({
   // keep defaults
 });
 
-// Fix for 9Router -> JB-Router: middleware bundling fails on node/bun sqlite + opentelemetry
+// Fix for JB-Router -> JB-Router: middleware bundling fails on node/bun sqlite + opentelemetry
 // @opennextjs/cloudflare hardcodes edgeExternals to ["node:crypto"], we extend it
 cfg.edgeExternals = [
   ...(cfg.edgeExternals || []),

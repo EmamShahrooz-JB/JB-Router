@@ -5,7 +5,7 @@
 // returning HTTP 503 even when the real upstream answer was 402/403/404/429.
 //
 // Two behaviours are covered here:
-//   1. explicit probes bypass recorded cooldowns (x-9r-force-test), so the user
+//   1. explicit probes bypass recorded cooldowns (x-jb-router-force-test), so the user
 //      always gets a real upstream attempt;
 //   2. when the router does answer with its cooldown 503, the probe reports the
 //      real upstream status/message/cooldown instead of a bare 503.

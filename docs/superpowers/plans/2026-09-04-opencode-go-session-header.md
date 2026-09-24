@@ -188,12 +188,12 @@ git commit -m "fix(chat): forward provider session context"
 ### Task 4: Verify and Install the Local CLI Package
 
 **Files:**
-- Generated: `9router-0.5.65.tgz`
+- Generated: `jb-router-0.5.65.tgz`
 - Packaged output: `cli/app/server.js`
 
 **Interfaces:**
 - Consumes: completed source changes and existing CLI build scripts.
-- Produces: a globally installed patched `9router@0.5.65`.
+- Produces: a globally installed patched `jb-router@0.5.65`.
 
 - [ ] **Step 1: Run source verification**
 
@@ -213,15 +213,15 @@ npm --prefix cli run build
 npm --prefix cli pack -- --pack-destination ..
 ```
 
-Expected: `9router-0.5.65.tgz` exists and contains the patched bundled server.
+Expected: `jb-router-0.5.65.tgz` exists and contains the patched bundled server.
 
 - [ ] **Step 3: Replace the global npm installation**
 
 ```bash
-npm install -g ./9router-0.5.65.tgz
+npm install -g ./jb-router-0.5.65.tgz
 ```
 
-Expected: `/opt/homebrew/lib/node_modules/9router/package.json` reports `0.5.65`
+Expected: `/opt/homebrew/lib/node_modules/jb-router/package.json` reports `0.5.65`
 and the installed bundle contains `x-opencode-session` plus the new executor.
 
 - [ ] **Step 4: Commit any required package-source adjustment**
@@ -236,11 +236,11 @@ already tracks and requires them.
 
 **Interfaces:**
 - Consumes: verified branch commits and GitHub issue #3759.
-- Produces: a fork branch and a PR against `decolua/9router:master`.
+- Produces: a fork branch and a PR against `EmamShahrooz-JB/JB-Router:master`.
 
 - [ ] **Step 1: Create or repair the GitHub fork remote**
 
-Use `gh repo fork decolua/9router --remote` if the current `fork` remote remains
+Use `gh repo fork EmamShahrooz-JB/JB-Router --remote` if the current `fork` remote remains
 missing, then push `fix/opencode-go-session-header`.
 
 - [ ] **Step 2: Create the PR**
