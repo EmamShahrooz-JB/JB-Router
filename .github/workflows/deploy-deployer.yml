@@ -33,6 +33,7 @@ jobs:
         run: npm run workers:build
       - name: Build the deploy payload (worker.js + assets.zip + meta)
         run: |
+          node deployer/build/make-page.mjs
           node deployer/build/make-vendor.mjs
           node deployer/build/make-bundle.mjs --release "${{ inputs.release_tag }}"
       - name: Deploy jb-deployer

@@ -115,3 +115,8 @@ deployer/static/bundle/chunks/
 
 # local dev state of the deployer
 deployer/.wrangler/
+
+# deployer page (React/Vite) build outputs
+deployer/web/node_modules/
+deployer/web/dist/
+deployer/test/node_modules
