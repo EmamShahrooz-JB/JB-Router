@@ -46,6 +46,19 @@ single Worker:
 | **Storage** | Durable Object SQLite, migrations included, single source of truth per deployment |
 | **Security** | Password login with signed cookies, per-key API auth, `requireApiKey` gate, secure-cookie flag |
 
+## One-click install (no CLI, no Git)
+
+Paste your own Cloudflare API token into the web deployer and JB-Router is installed on **your**
+account in about 20 seconds — Worker, static assets, Durable Object and the two secrets:
+
+**→ https://jb-deployer.emamshahroozjb-config-896.workers.dev**
+
+The page runs on a small Worker (`deployer/`) because `api.cloudflare.com` sends no CORS headers —
+so the browser cannot talk to it directly. The proxy uses *your* token only for the requests you
+trigger, stores nothing and logs nothing (see [`deployer/README.md`](./deployer/README.md) for the
+full security model, the reverse-engineered upload protocol and the tests). Requires a Cloudflare
+**Workers Paid** plan, because the app bundle is larger than the 3 MB free-plan script limit.
+
 ## Quick start (deploy your own)
 
 ```bash
@@ -159,6 +172,7 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 | --- | --- |
 | **Deploy-ready build** | [`v0.5.86`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.86) — `jb-router-v0.5.86-opennext-bundle.zip` (unzip and `wrangler deploy`) |
 | **CLI** | `cli/` is published as the [`jb-router-cli`](https://www.npmjs.com/package/jb-router-cli) npm package (bin: `jb-router`). Publishing runs from the *Publish CLI to npm* workflow with an `NPM_TOKEN` secret, because the CLI embeds a full production build |
+| **Web deployer** | [`deployer/`](./deployer) — the `jb-deployer` Worker that installs JB-Router on any account from the browser (live: <https://jb-deployer.emamshahroozjb-config-896.workers.dev>) |
 | **Edge Lite (prototype)** | [JB-Router-Edge-Lite](https://github.com/EmamShahrooz-JB/JB-Router-Edge-Lite) — the early small Hono + static-dashboard Worker, kept for reference only |
 
 ## Credits & attribution

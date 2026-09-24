@@ -320,3 +320,23 @@ Published as **JB-Router** — https://github.com/EmamShahrooz-JB/JB-Router (MIT
   them. Secret scanning also reports one `Google API Key` alert for the public
   Windsurf/Codeium key in `open-sse/providers/registry/windsurf.js`; it is a
   tracked, dismissable alert.
+
+
+## Web deployer (`jb-deployer`) — 2026-09-24
+
+`deployer/` hosts a page that installs JB-Router onto **a visitor's own Cloudflare account** from the
+browser. `api.cloudflare.com` has no CORS support (a `GET /user/tokens/verify` with an `Origin`
+header returns no `Access-Control-*` headers and `OPTIONS` preflights answer `400`), so a static page
+can never call it directly — the deploy runs through the `jb-deployer` Worker, which proxies:
+
+* `assets-upload-session` → `assets/upload?base64=true` (asset hash = `blake3(base64 + ext)[:32]`,
+  exactly wrangler's `hashFile`) → `PUT /workers/scripts/{name}` with a **streamed** multipart body
+  (the 21.5 MB module is piped out of the deployer's own static assets, no buffering, no CPU cost);
+* `migrations` only on a fresh install — a re-deploy with the same tag is retried without them because
+  of `10079 Actor migration tag precondition failed`;
+* `POST` (not `PUT`) `/workers/scripts/{name}/subdomain` to publish the workers.dev URL;
+* health polling from the **browser** — subrequests to `*.workers.dev` from inside Cloudflare return
+  `404 error code: 1042`, while the public internet reaches the same URL fine.
+
+Measured on a real account: fresh install 19.7 s, re-install 13.2 s (`deployer/test/e2e.mjs`,
+`deployer/test/ui-smoke.mjs`). The deployer ships only the public release bundle and keeps no state.

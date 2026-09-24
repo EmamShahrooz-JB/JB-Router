@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JB-Router · نصب خودکار روی Cloudflare Workers</title>
+<meta name="description" content="توکن Cloudflare خود را بگذارید و JB-Router روی اکانت خودتان نصب می‌شود؛ بدون CLI، بدون گیت‌هاب، مستقیم از روی workers.dev.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230b1020'/><text x='50' y='68' font-size='54' text-anchor='middle' fill='%237dd3fc'>JB</text></svg>">
+<style>
+  :root{
+    --bg:#060911; --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.075);
+    --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.18);
+    --txt:#e8edf8; --muted:#98a5bf; --dim:#68748f;
+    --brand:#7dd3fc; --brand2:#a78bfa; --ok:#34d399; --warn:#fbbf24; --err:#fb7185;
+    --radius:16px; --shadow:0 20px 60px -28px rgba(0,0,0,.95);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--txt); min-height:100vh;
+    background:
+      radial-gradient(1200px 640px at 88% -12%, rgba(125,211,252,.18), transparent 60%),
+      radial-gradient(900px 520px at 6% -4%, rgba(167,139,250,.16), transparent 58%),
+      radial-gradient(700px 500px at 50% 120%, rgba(14,165,233,.10), transparent 60%),
+      var(--bg);
+    font:15px/1.9 system-ui,-apple-system,"Segoe UI",Roboto,"Vazirmatn",Tahoma,sans-serif;
+  }
+  a{color:var(--brand);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;direction:ltr;display:inline-block;
+       background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:6px;padding:0 5px;font-size:12.5px}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 18px 88px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:13px}
+  .logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(140deg,#0ea5e9,#8b5cf6);display:grid;place-items:center;font-weight:800;box-shadow:var(--shadow)}
+  h1{font-size:23px;margin:0;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13px;margin-top:3px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--panel);padding:5px 10px;border-radius:999px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-top:16px;backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+  .card h2{font-size:16.5px;margin:0 0 6px}
+  .card h2 .n{color:var(--brand);font-weight:700;margin-inline-end:6px}
+  p.hint{color:var(--muted);font-size:13px;margin:6px 0 12px}
+  .grid{display:grid;gap:13px}
+  @media(min-width:780px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr}}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line-strong);
+    background:rgba(6,10,20,.72);color:var(--txt);font:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus{border-color:rgba(125,211,252,.6);box-shadow:0 0 0 4px rgba(125,211,252,.12)}
+  input[dir=ltr],select[dir=ltr]{text-align:left}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .grow{flex:1 1 200px}
+  button{cursor:pointer;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--txt);
+    font:inherit;padding:11px 16px;border-radius:12px;transition:transform .08s,filter .15s,opacity .15s}
+  button:hover{filter:brightness(1.14)} button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:linear-gradient(135deg,#0ea5e9,#8b5cf6);border-color:transparent;font-weight:700;padding-inline:22px}
+  button.ghost{background:transparent}
+  .progress{height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin:14px 0 12px}
+  .progress>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#0ea5e9,#8b5cf6);transition:width .35s ease}
+  .status{display:flex;align-items:center;gap:10px;font-size:14px}
+  .dot{width:10px;height:10px;border-radius:999px;background:var(--dim);flex:0 0 auto}
+  .dot.run{background:var(--brand);animation:pulse 1.15s infinite}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
+  @keyframes pulse{50%{opacity:.25}}
+  .steps-status{display:grid;gap:7px;margin-top:14px}
+  .srow{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+  .srow.done{color:var(--txt)} .srow.active{color:var(--brand)}
+  .srow .nm{flex:1} .srow .ic{width:16px;text-align:center}
+  .tag{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+  .log{background:rgba(3,6,14,.88);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:320px;
+       overflow:auto;direction:rtl;text-align:right;font-size:12.5px;line-height:1.9;white-space:pre-wrap;color:#c7d2fe}
+  details{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  summary{cursor:pointer;color:var(--muted);font-size:13px}
+  .notice{border:1px solid rgba(251,191,36,.38);background:rgba(251,191,36,.07);border-radius:12px;padding:12px;font-size:13px;color:#fde68a}
+  .result{margin-top:14px;border:1px solid rgba(52,211,153,.45);background:rgba(52,211,153,.08);border-radius:12px;padding:15px}
+  .result.err{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.08)}
+  .kv{display:grid;grid-template-columns:170px 1fr;gap:7px 12px;font-size:13.5px;margin-top:9px}
+  .kv b{color:var(--muted);font-weight:500}
+  ul.tight{margin:8px 0;padding-inline-start:20px;font-size:13px;color:var(--muted)}
+  .foot{margin-top:24px;color:var(--dim);font-size:12px;text-align:center}
+  .hidden{display:none!important}
+  .secure{font-size:12px;color:var(--muted);margin-top:9px}
+  .secure b{color:var(--ok);font-weight:600}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:999px;padding:4px 10px}
+  .flow{display:grid;gap:8px;grid-template-columns:1fr;font-size:13px;color:var(--muted)}
+  @media(min-width:780px){.flow{grid-template-columns:repeat(4,1fr)}}
+  .flow div{border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(255,255,255,.03)}
+  .flow b{display:block;color:var(--txt);font-size:13px;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">JB</div>
+      <div>
+        <h1>نصب خودکار JB-Router روی اکانت Cloudflare خودتان</h1>
+        <div class="sub">توکن Cloudflare را وارد کنید؛ نصب روی همان اکانت انجام می‌شود — بدون CLI، بدون گیت‌هاب.</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge">Cloudflare Workers API</span>
+      <span class="badge">بدون ذخیره‌سازی توکن</span>
+      <span class="badge">MIT</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="notice">
+      <b>نکتهٔ فنی:</b> API خودِ Cloudflare هدر CORS نمی‌دهد، پس مرورگر نمی‌تواند مستقیم به <code>api.cloudflare.com</code> وصل شود.
+      این صفحه درخواست‌ها را به یک Worker واسط (<code>jb-deployer</code>) می‌فرستد که فقط و فقط با <b>توکن خود شما</b> با Cloudflare حرف می‌زند؛
+      توکن در هیچ دیتابیس/لاگی ذخیره نمی‌شود و فقط در همان لحظه برای همان درخواست استفاده می‌شود. کد این واسط باز است.
+    </div>
+    <div class="flow" style="margin-top:12px">
+      <div><b>۱. مرورگر</b> مرورگر شما توکن را می‌گیرد، دارایی‌ها را آماده و هش می‌کند.</div>
+      <div><b>۲. ورکر واسط</b> درخواست‌ها را به Cloudflare می‌رساند (رفع محدودیت CORS).</div>
+      <div><b>۳. اکانت شما</b> ورکر JB-Router + دارایی‌ها + Durable Object روی اکانت خودتان ساخته می‌شود.</div>
+      <div><b>۴. آماده</b> آدرس <code>&lt;name&gt;.&lt;subdomain&gt;.workers.dev</code> تحویل داده می‌شود.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">۱</span>توکن Cloudflare</h2>
+    <p class="hint">
+      از <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener">My Profile → API Tokens ↗</a> قالب
+      <b>Edit Cloudflare Workers</b> را بسازید (به <code>Account.Workers Scripts: Edit</code>، <code>Account.Account Settings: Read</code> و
+      <code>Account.Workers KV Storage: Edit</code> نیاز داریم). توکن فقط روی اکانت همان حساب اثر دارد.
+    </p>
+    <div class="row">
+      <input id="cfToken" class="grow" dir="ltr" type="password" placeholder="Cloudflare API token" autocomplete="off" spellcheck="false">
+      <button class="ghost" type="button" onclick="toggleVis('cfToken',this)">نمایش</button>
+      <button type="button" id="checkToken">بررسی توکن</button>
+    </div>
+    <p class="secure">توکن در همین صفحه استفاده می‌شود و <b>هیچ‌جا ذخیره/لاگ نمی‌شود</b>. اگر نگران هستید، بعد از نصب توکن را از داشبورد Cloudflare باطل (Roll) کنید.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">۲</span>اکانت و نام ورکر</h2>
+    <div class="grid three">
+      <div>
+        <label for="accountId">اکانت Cloudflare</label>
+        <select id="accountId" dir="ltr"><option value="">— اول توکن را بررسی کنید —</option></select>
+      </div>
+      <div>
+        <label for="workerName">نام ورکر</label>
+        <input id="workerName" dir="ltr" value="jb-router" spellcheck="false">
+      </div>
+      <div>
+        <label for="subdomain">workers.dev subdomain</label>
+        <input id="subdomain" dir="ltr" placeholder="خودکار" spellcheck="false">
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      اگر اکانت شما هنوز subdomain ندارد، همین‌جا در فیلد بنویسید (مثلاً <code>myname</code>) تا ساخته شود.
+      پیش‌نمایش آدرس نهایی: <code id="urlPreview" dir="ltr">https://jb-router.&lt;subdomain&gt;.workers.dev</code>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">۳</span>رمزهای اپلیکیشن</h2>
+    <div class="grid two">
+      <div>
+        <label for="password">رمز ورود داشبورد (INITIAL_PASSWORD)</label>
+        <div class="row">
+          <input id="password" class="grow" dir="ltr" spellcheck="false">
+          <button class="ghost" type="button" onclick="regen('password')">تازه</button>
+        </div>
+      </div>
+      <div>
+        <label for="jwtSecret">کلید امضای نشست (JWT_SECRET)</label>
+        <div class="row">
+          <input id="jwtSecret" class="grow" dir="ltr" spellcheck="false">
+          <button class="ghost" type="button" onclick="regen('jwtSecret')">تازه</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px">این‌ها به‌صورت Secret روی ورکرِ خودتان ذخیره می‌شوند؛ در URL یا لاگ هیچ‌جا چاپ نمی‌شوند.</p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button class="primary" id="startBtn" type="button">🚀 نصب روی اکانت من</button>
+        <button class="ghost" id="stopBtn" type="button" disabled>توقف</button>
+      </div>
+      <span class="pill" id="modePill">آماده</span>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">منتظر شروع — توکن را وارد کنید</span></div>
+    <div class="steps-status" id="stepsStatus"></div>
+    <div class="result hidden" id="resultBox"></div>
+    <details id="logWrap" class="hidden" open>
+      <summary>گزارش مرحله‌به‌مرحله</summary>
+      <div class="log" id="log"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>چه چیزی نصب می‌شود؟</h2>
+    <ul class="tight">
+      <li>یک ورکر با نام دلخواه شما + دارایی‌های استاتیک (۱۰ مگابایت، ۴۲۸ فایل) و یک <b>Durable Object</b> با SQLite برای ذخیرهٔ تنظیمات، اتصال پروایدرها و لاگ مصرف.</li>
+      <li>دو Secret: <code>JWT_SECRET</code> و <code>INITIAL_PASSWORD</code> (همان‌هایی که بالاتر ساختیم).</li>
+      <li>آدرس <code>/login</code> برای داشبورد و <code>/v1</code> به‌عنوان Endpoint سازگار با OpenAI برای کلاینت‌ها (Cursor، Cline، Claude Code، Codex و…).</li>
+    </ul>
+    <p class="hint">
+      توصیه: اکانت شما باید Workers Paid باشد، چون حجم اسکریپت JB-Router بیش از سقف پلن رایگان (۳ مگابایت) است. اگر پلن رایگان دارید، نصب با پیام خطای اندازه متوقف می‌شود.
+      منبع و مستندات: <a href="https://github.com/EmamShahrooz-JB/JB-Router" target="_blank" rel="noopener">EmamShahrooz-JB/JB-Router ↗</a>
+    </p>
+  </div>
+
+  <div class="foot">JB-Router deployer · نسخهٔ بسته: <span id="releaseLabel">—</span> · همه‌ی درخواست‌ها فقط به همین دامنه و <code>api.cloudflare.com</code> می‌روند.</div>
+</div>
+
+<script type="module" src="./deployer.js"></script>
+</body>
+</html>
