@@ -1,0 +1,61 @@
+name: Publish CLI to npm
+
+# Manual: publishing the CLI needs a full production build of the app (the package
+# embeds `.next-cli-build` in `cli/app`, exactly like upstream), which is why it
+# runs here instead of on a low-memory dev machine.
+#
+# Setup once: add an npm automation token as the repository secret `NPM_TOKEN`
+# (npmjs.com -> Access Tokens -> Granular/Automation, "Publish" on jb-router-cli),
+# then run this workflow from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (pack only, do not publish)"
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: npm install --no-audit --no-fund
+
+      - name: Build CLI bundle
+        working-directory: cli
+        run: npm run build
+
+      - name: Check npm authentication
+        if: ${{ !inputs.dry_run }}
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        working-directory: cli
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        working-directory: cli
+        run: |
+          npm pack --dry-run
+          echo "Dry run only — re-run with dry_run=false and an NPM_TOKEN secret to publish."

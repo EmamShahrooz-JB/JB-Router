@@ -153,6 +153,14 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 
 `.env.example` documents the Node/self-hosted equivalent.
 
+## Releases & related projects
+
+| | |
+| --- | --- |
+| **Deploy-ready build** | [`v0.5.86`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.86) — `jb-router-v0.5.86-opennext-bundle.zip` (unzip and `wrangler deploy`) |
+| **CLI** | `cli/` is published as the [`jb-router-cli`](https://www.npmjs.com/package/jb-router-cli) npm package (bin: `jb-router`). Publishing runs from the *Publish CLI to npm* workflow with an `NPM_TOKEN` secret, because the CLI embeds a full production build |
+| **Edge Lite (prototype)** | [JB-Router-Edge-Lite](https://github.com/EmamShahrooz-JB/JB-Router-Edge-Lite) — the early small Hono + static-dashboard Worker, kept for reference only |
+
 ## Credits & attribution
 
 JB-Router is a **Cloudflare Workers port of [9Router](https://github.com/decolua/9router)**

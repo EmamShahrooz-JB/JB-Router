@@ -1,9 +1,9 @@
 {
-  "name": "9router",
+  "name": "jb-router-cli",
   "version": "0.5.86",
-  "description": "9Router CLI - Start and manage 9Router server",
+  "description": "JB-Router CLI \u2014 start, update and manage your JB-Router server",
   "bin": {
-    "9router": "./cli.js"
+    "jb-router": "./cli.js"
   },
   "files": [
     "cli.js",
@@ -34,15 +34,26 @@
     "node": ">=18.0.0"
   },
   "keywords": [
+    "jb-router",
     "9router",
     "cli",
     "proxy",
     "ai",
-    "api"
+    "api",
+    "cloudflare-workers"
   ],
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.25.12",
     "nodemon": "^3.1.14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EmamShahrooz-JB/JB-Router.git",
+    "directory": "cli"
+  },
+  "homepage": "https://github.com/EmamShahrooz-JB/JB-Router#readme",
+  "bugs": {
+    "url": "https://github.com/EmamShahrooz-JB/JB-Router/issues"
   }
 }
