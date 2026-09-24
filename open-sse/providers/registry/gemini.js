@@ -22,8 +22,8 @@ export default {
   transport: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/models",
     format: "gemini",
-    clientId: "jbrouter-placeholder.apps.googleusercontent.com",
-    clientSecret: "jbrouter-placeholder-client-secret",
+    clientId: "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com",
+    clientSecret: "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",
     auth: {
       apiKey: {
         header: "x-goog-api-key",

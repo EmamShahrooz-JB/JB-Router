@@ -48,8 +48,8 @@
       "loadProjectApiUrl": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
       "tokenUrl": "https://oauth2.googleapis.com/token"
     },
-    "clientId": "jbrouter-placeholder.apps.googleusercontent.com",
-    "clientSecret": "jbrouter-placeholder-client-secret",
+    "clientId": "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
+    "clientSecret": "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",
     "tokenUrl": "https://oauth2.googleapis.com/token"
   },
   "assemblyai": {
@@ -299,15 +299,15 @@
       "quotaUrl": "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota",
       "loadCodeAssistUrl": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
     },
-    "clientId": "jbrouter-placeholder.apps.googleusercontent.com",
-    "clientSecret": "jbrouter-placeholder-client-secret",
+    "clientId": "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com",
+    "clientSecret": "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",
     "tokenUrl": "https://oauth2.googleapis.com/token"
   },
   "gemini": {
     "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models",
     "format": "gemini",
-    "clientId": "jbrouter-placeholder.apps.googleusercontent.com",
-    "clientSecret": "jbrouter-placeholder-client-secret",
+    "clientId": "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com",
+    "clientSecret": "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",
     "auth": {
       "apiKey": {
         "header": "x-goog-api-key",
