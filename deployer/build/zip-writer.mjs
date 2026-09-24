@@ -1,7 +1,7 @@
 /**
  * Store-only (uncompressed) zip writer — fallback for environments without the `zip` binary.
- * Only used by `make-bundle.mjs` when `zip` is not installed; the produced archive is bigger
- * (about 10 MB instead of 7 MB) but byte-for-byte valid for the browser-side reader.
+ * Only used by `make-bundle.mjs` when `zip` is missing; the archive is bigger (≈10 MB instead of
+ * ≈7 MB) but valid for the browser-side reader.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -47,7 +47,6 @@ export function zipSync(rootDir, relativePaths) {
     lv.setUint16(26, nameBytes.length, true);
     lv.setUint16(28, 0, true);
     localHeader.set(nameBytes, 30);
-
     localParts.push(localHeader, data);
 
     const central = new Uint8Array(46 + nameBytes.length);

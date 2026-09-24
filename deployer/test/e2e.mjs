@@ -59,7 +59,7 @@ const result = await runDeploy({
     seen.push(event);
     const el = ((Date.now() - started) / 1000).toFixed(1) + "s";
     if (event.type === "step") console.log(`  [${el}] step ${event.id}: ${event.state}${event.note ? " (" + event.note + ")" : ""}`);
-    else if (event.type === "log") console.log(`  [${el}] log:`, event.text);
+    else if (event.type === "event") console.log(`  [${el}] ${event.key}:`, JSON.stringify(event.data));
     else if (event.type === "progress" && event.total) process.stdout.write(`\r  ${event.id} ${event.received}/${event.total}   `);
   }
 });

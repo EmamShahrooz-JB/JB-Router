@@ -2,19 +2,19 @@
 /**
  * Builds the payload the JB-Router web deployer ships to a visitor's Cloudflare account:
  *
- *   deployer/static/bundle/worker.js      bundled JB-Router Worker module (raw)
- *   deployer/static/bundle/assets.zip     .open-next/assets/**, ready to unzip in the browser
- *   deployer/static/bundle/meta.json      release tag, sizes, and the mime map used for uploads
+ *   deployer/static/bundle/worker.js    bundled JB-Router Worker module (streamed on upload)
+ *   deployer/static/bundle/assets.zip   .open-next/assets/**, ready to unzip in the browser
+ *   deployer/static/bundle/meta.json    release, sizes, compatibility date/flags
+ *   deployer/static/bundle/mime-map.js  extension → content-type for the asset parts
  *
  * Run from the repository root:  node deployer/build/make-bundle.mjs [--release vX.Y.Z]
  *
- * The bundled module is produced by `wrangler deploy --dry-run`, i.e. exactly the same
- * module wrangler would upload. The mime map mirrors what wrangler sends as the part
- * content-type for each static asset (unknown extensions become "application/null").
+ * The bundled module comes from `wrangler deploy --dry-run`, i.e. exactly the module wrangler
+ * would upload. The mime map mirrors what wrangler sends as each asset part's content-type
+ * (unknown extensions become "application/null").
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { copyFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -61,8 +61,8 @@ const assetsZip = path.join(outDir, "assets.zip");
 try {
   sh("zip", ["-r", "-q", "-X", "-9", assetsZip, "."], { cwd: assetsDir });
 } catch {
-  // zip not available: fall back to a stored-only archive via Node
-  console.warn("[build] `zip` unavailable — writing archive with Node");
+  // zip not available: fall back to a stored-only archive written in Node
+  console.warn("[build] `zip` unavailable — writing the archive with Node instead");
   const { zipSync } = await import("./zip-writer.mjs");
   writeFileSync(assetsZip, zipSync(assetsDir, walk(assetsDir)));
 }
@@ -73,7 +73,7 @@ try {
   const mime = await import("mime");
   mimeLookup = (ext) => mime.default?.getType?.(ext) || mime.getType?.(ext) || null;
 } catch {
-  console.warn("[build] `mime` package unavailable — using built-in map");
+  console.warn("[build] `mime` package unavailable — using the built-in map");
 }
 
 const BUILTIN = {
@@ -83,8 +83,8 @@ const BUILTIN = {
   xml: "application/xml", svg: "image/svg+xml", ico: "image/x-icon",
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
   webp: "image/webp", avif: "image/avif", bmp: "image/bmp",
-  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf", eot: "application/vnd.ms-fontobject",
-  wasm: "application/wasm", pdf: "application/pdf",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+  eot: "application/vnd.ms-fontobject", wasm: "application/wasm", pdf: "application/pdf",
   mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4",
   mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime",
   csv: "text/csv", md: "text/markdown", webmanifest: "application/manifest+json",
@@ -97,13 +97,12 @@ for (const rel of files) {
   const ext = path.extname(rel).slice(1).toLowerCase();
   if (!ext || mimeMap[ext]) continue;
   if (mimeLookup) {
-    const t = mimeLookup(ext);
-    if (t) { mimeMap[ext] = t; continue; }
+    const type = mimeLookup(ext);
+    if (type) { mimeMap[ext] = type; continue; }
   }
-  if (BUILTIN[ext]) mimeMap[ext] = BUILTIN[ext];
-  else mimeMap[ext] = MIME_FALLBACK;
+  mimeMap[ext] = BUILTIN[ext] || MIME_FALLBACK;
 }
-writeFileSync(path.join(outDir, "mime-map.js"), "window.JB_MIME = " + JSON.stringify(mimeMap, null, 0) + ";\n");
+writeFileSync(path.join(outDir, "mime-map.js"), "window.JB_MIME = " + JSON.stringify(mimeMap) + ";\n");
 
 const totalBytes = files.reduce((n, f) => n + statSync(path.join(assetsDir, f)).size, 0);
 const meta = {

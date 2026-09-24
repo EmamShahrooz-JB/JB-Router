@@ -110,3 +110,6 @@ deployer/static/bundle/worker.js
 deployer/static/bundle/assets.zip
 deployer/static/bundle/meta.json
 deployer/static/bundle/mime-map.js
+
+# local dev state of the deployer
+deployer/.wrangler/

@@ -3,8 +3,14 @@
  * exactly like wrangler does, uploads them to the visitor's Cloudflare account and finally
  * asks the deployer Worker to push the bundled Worker + secrets.
  *
- * Runs in the browser (static assets) and in Node (integration test) — it only needs
- * fetch, DecompressionStream (overridable) and blake3.
+ * Runs in the browser (static assets) and in Node (integration tests) — it only needs fetch,
+ * DecompressionStream (overridable), blake3 and FormData.
+ *
+ * Every callback event is a plain object so the UI layer owns all wording:
+ *   {type:"step",     id, state:"active"|"done"|"error", note}
+ *   {type:"event",    key, data}        // progress milestones, keys documented below
+ *   {type:"progress", id, received, total}
+ *   {type:"result",   result}
  */
 import { blake3 } from "./vendor/blake3.js";
 
@@ -110,7 +116,6 @@ async function postJson(fetchImpl, apiBase, path, body, signal) {
 async function downloadWithProgress(fetchImpl, url, onBytes, signal) {
   const res = await fetchImpl(url, { signal });
   if (!res.ok) throw new DeployError(`could not download the deploy payload (HTTP ${res.status})`);
-  const total = Number(res.headers.get("content-length") || 0);
   if (!res.body || !onBytes) return new Uint8Array(await res.arrayBuffer());
   const reader = res.body.getReader();
   const parts = [];
@@ -120,7 +125,7 @@ async function downloadWithProgress(fetchImpl, url, onBytes, signal) {
     if (done) break;
     parts.push(value);
     received += value.length;
-    onBytes(received, total);
+    onBytes(received);
   }
   const out = new Uint8Array(received);
   let offset = 0;
@@ -128,18 +133,21 @@ async function downloadWithProgress(fetchImpl, url, onBytes, signal) {
   return out;
 }
 
+/* ------------------------------------------------------------------ helpers */
+
+/** Cloudflare account lookup used by the wizard when the token can see several accounts. */
+export async function listAccounts({ cfToken, apiBase = "", fetchImpl = fetch, signal }) {
+  return postJson(fetchImpl, apiBase, "/api/accounts", { token: cfToken }, signal);
+}
+
+export async function getSubdomain({ cfToken, accountId, apiBase = "", fetchImpl = fetch, signal }) {
+  return postJson(fetchImpl, apiBase, "/api/subdomain", { token: cfToken, accountId }, signal);
+}
+
 /* ------------------------------------------------------------------ deploy */
 
 export const STEPS = [
-  { id: "verify", label: "بررسی توکن Cloudflare" },
-  { id: "bundle", label: "دریافت بستهٔ نصب JB-Router" },
-  { id: "hash", label: "محاسبهٔ هش فایل‌های استاتیک" },
-  { id: "session", label: "ساخت نشست آپلود دارایی‌ها" },
-  { id: "assets", label: "آپلود دارایی‌های استاتیک" },
-  { id: "script", label: "نصب ورکر JB-Router" },
-  { id: "secrets", label: "ثبت رمزها (JWT_SECRET / INITIAL_PASSWORD)" },
-  { id: "enable", label: "فعال‌سازی آدرس workers.dev" },
-  { id: "health", label: "تأیید سلامت نصب" }
+  "verify", "bundle", "hash", "session", "assets", "script", "secrets", "enable", "health"
 ];
 
 /**
@@ -151,40 +159,48 @@ export const STEPS = [
  * @param {string} opts.jwtSecret    value for the JWT_SECRET secret
  * @param {string} opts.password     value for the INITIAL_PASSWORD secret
  * @param {string} [opts.release]    release tag (log only)
+ * @param {boolean} [opts.dryRun]    stop after token/account validation
  * @param {string} [opts.apiBase]    deployer Worker base url ("" = same origin)
  * @param {string} [opts.zipUrl]     payload url (default /bundle/assets.zip)
- * @param {string} [opts.mimeMapUrl]
+ * @param {string} [opts.mimeMapUrl] mime map url (default /bundle/mime-map.js)
  * @param {Function} [opts.fetchImpl]
  * @param {Function} [opts.inflateRaw]
- * @param {Function} [opts.onEvent]  ({type, ...}) progress callback
+ * @param {Function} [opts.onEvent]  progress callback
  * @param {AbortSignal} [opts.signal]
  */
 export async function runDeploy(opts) {
   const {
-    cfToken, accountId, name, subdomain, jwtSecret, password, release,
+    cfToken, accountId, name, subdomain, jwtSecret, password, release, dryRun = false,
     apiBase = "", zipUrl = apiBase + "/bundle/assets.zip", mimeMapUrl = apiBase + "/bundle/mime-map.js",
     fetchImpl = fetch, inflateRaw = inflateRawStream, onEvent = () => {}, signal
   } = opts;
 
   const emit = (event) => { try { onEvent(event); } catch { /* ignore */ } };
-  const log = (text) => emit({ type: "log", text });
+  const event = (key, data) => emit({ type: "event", key, data });
   const step = (id, state, note) => emit({ type: "step", id, state, note });
-  const fail = (id, message) => { emit({ type: "step", id, state: "error", note: "خطا" }); throw new DeployError(message); };
+  const fail = (id, message) => { emit({ type: "step", id, state: "error" }); event("failure", { id, message }); throw new DeployError(message); };
 
   /* 1. token ---------------------------------------------------------------- */
   step("verify", "active");
   const verified = await postJson(fetchImpl, apiBase, "/api/verify", { token: cfToken }, signal);
-  if (verified.status !== "active") fail("verify", `وضعیت توکن Cloudflare «${verified.status}» است`);
-  log(`توکن Cloudflare معتبر است (id ${String(verified.id).slice(0, 8)}…).`);
+  if (verified.status !== "active") fail("verify", `Token status is "${verified.status}".`);
+  event("verify.ok", { tokenId: verified.id });
   step("verify", "done");
+
+  if (dryRun) {
+    event("dryrun.ok", { accountId, name, url: `https://${name}.${subdomain}.workers.dev` });
+    const result = { dryRun: true, name, accountId, url: `https://${name}.${subdomain}.workers.dev`, health: "skipped" };
+    emit({ type: "result", result });
+    return result;
+  }
 
   /* 2. payload -------------------------------------------------------------- */
   step("bundle", "active");
   const meta = await (await fetchImpl(apiBase + "/api/meta", { signal })).json();
-  const zipBytes = await downloadWithProgress(fetchImpl, zipUrl, (received, total) => {
-    emit({ type: "progress", id: "bundle", received, total });
+  const zipBytes = await downloadWithProgress(fetchImpl, zipUrl, (received) => {
+    emit({ type: "progress", id: "bundle", received, total: 0 });
   }, signal);
-  log(`بستهٔ نصب ${release || meta.release} دریافت شد (${(zipBytes.length / 1048576).toFixed(1)} مگابایت، ${meta.assetFiles} فایل).`);
+  event("bundle.ok", { release: release || meta.release, bytes: zipBytes.length, files: meta.assetFiles });
   step("bundle", "done");
 
   /* 3. manifest ------------------------------------------------------------- */
@@ -198,12 +214,12 @@ export async function runDeploy(opts) {
     const hash = hashAsset(entry.bytes, entry.path);
     manifest[entry.path] = { hash, size: entry.bytes.length };
     if (!byHash.has(hash)) byHash.set(hash, { path: entry.path, bytes: entry.bytes });
-    if (++index % 40 === 0 || index === entries.length) {
-      emit({ type: "progress", id: "hash", received: index, total: entries.length });
-    }
+    index++;
+    if (index % 40 === 0) emit({ type: "progress", id: "hash", received: index, total: entries.length });
   }
-  log(`${entries.length} فایل استاتیک هش شد (blake3، همان الگوریتم wrangler).`);
-  step("hash", "done", `${entries.length} فایل`);
+  emit({ type: "progress", id: "hash", received: entries.length, total: entries.length });
+  event("hash.ok", { files: entries.length });
+  step("hash", "done", String(entries.length));
 
   /* 4. upload session ------------------------------------------------------- */
   step("session", "active");
@@ -211,7 +227,7 @@ export async function runDeploy(opts) {
   let assetsJwt = session.jwt;
   const buckets = session.buckets || [];
   const pending = buckets.reduce((n, bucket) => n + bucket.length, 0);
-  log(`نشست آپلود ساخته شد؛ ${pending} فایل تازه برای آپلود.`);
+  event("session.ok", { pending, buckets: buckets.length });
   step("session", "done");
 
   /* 5. asset buckets -------------------------------------------------------- */
@@ -221,11 +237,10 @@ export async function runDeploy(opts) {
     const form = new FormData();
     for (const hash of buckets[i]) {
       const file = byHash.get(hash);
-      if (!file) fail("assets", `فایل ناشناخته در نشست آپلود: ${hash}`);
+      if (!file) fail("assets", `Asset requested by the upload session is missing: ${hash}`);
       form.append(hash, new File([bytesToBase64(file.bytes)], hash, { type: mimeFor(file.path, mimeMap) }), hash);
     }
-    // No content-type header here on purpose: fetch adds it together with the boundary that
-    // matches the body it serialises, and the deployer Worker forwards it verbatim.
+    // The content-type header is intentionally left to fetch so the multipart boundary matches.
     const res = await fetchImpl(`${apiBase}/api/assets-upload?account=${encodeURIComponent(accountId)}&name=${encodeURIComponent(name)}`, {
       method: "POST",
       headers: { "x-cf-token": cfToken, "x-assets-jwt": assetsJwt },
@@ -236,25 +251,25 @@ export async function runDeploy(opts) {
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = null; }
     if (!res.ok || !data || data.ok !== true) {
-      fail("assets", `آپلود دارایی‌ها ناموفق بود: ${(data && data.error) || "HTTP " + res.status}`);
+      fail("assets", `Asset upload failed: ${(data && data.error) || "HTTP " + res.status}`);
     }
     if (data.jwt) assetsJwt = data.jwt;
     uploaded += buckets[i].length;
     emit({ type: "progress", id: "assets", received: uploaded, total: pending });
-    log(`بخش ${i + 1}/${buckets.length} آپلود شد (${uploaded}/${pending} فایل).`);
+    event("assets.bucket", { index: i + 1, buckets: buckets.length, uploaded, pending });
   }
-  if (!assetsJwt) fail("assets", "سرور آپلود، توکن نهایی دارایی‌ها را برنگرداند");
+  if (!assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
   assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
-  if (!pending) log("همهٔ دارایی‌ها از قبل روی این حساب موجود بودند.");
-  step("assets", "done", `${entries.length} فایل`);
+  event("assets.ok", { total: entries.length, pending });
+  step("assets", "done", String(entries.length));
 
   /* 6. worker script -------------------------------------------------------- */
   step("script", "active");
   const script = await postJson(fetchImpl, apiBase, "/api/script", {
     token: cfToken, accountId, name, assetsJwt, jwtSecret, password
   }, signal);
-  log(`ورکر «${script.id}» نصب شد (deployment ${String(script.deploymentId).slice(0, 8)}…، assets: ${script.hasAssets}).`);
-  step("script", "done", "worker + assets");
+  event("script.ok", { name: script.id, deploymentId: script.deploymentId, hasAssets: script.hasAssets });
+  step("script", "done");
 
   /* 7. secrets -------------------------------------------------------------- */
   step("secrets", "active");
@@ -265,24 +280,26 @@ export async function runDeploy(opts) {
       { name: "INITIAL_PASSWORD", text: password }
     ]
   }, signal);
-  log(`رمزها ثبت شدند: ${secrets.stored.join(", ")}.`);
+  event("secrets.ok", { stored: secrets.stored });
   step("secrets", "done");
 
   /* 8. workers.dev ---------------------------------------------------------- */
   step("enable", "active");
   await postJson(fetchImpl, apiBase, "/api/enable", { token: cfToken, accountId, name }, signal);
   const url = `https://${name}.${subdomain}.workers.dev`;
-  log(`آدرس عمومی فعال شد: ${url}`);
+  event("enable.ok", { url });
   step("enable", "done");
 
   /* 9. health --------------------------------------------------------------- */
   step("health", "active");
-  const health = await waitForHealth({ fetchImpl, url, signal, log, emit });
-  step("health", health.ok ? "done" : "error", health.ok ? `${health.ms}ms` : "بی‌پاسخ");
+  const health = await waitForHealth({ fetchImpl, url, signal, emit });
+  step("health", health.ok ? "done" : "error", health.ok ? `${health.ms}` : "timeout");
+  event(health.ok ? "health.ok" : "health.timeout", { ms: health.ms, status: health.status });
 
   const result = {
     name, url, loginUrl: url + "/login", apiBaseUrl: url + "/v1",
-    health: health.ok ? "ok" : "unknown", status: health.status || 0, accountId, release: release || meta.release
+    health: health.ok ? "ok" : "unknown", status: health.status || 0,
+    accountId, release: release || meta.release, password
   };
   emit({ type: "result", result });
   return result;
@@ -303,15 +320,14 @@ async function loadMimeMap(fetchImpl, url, signal) {
 /**
  * Polls the freshly deployed Worker from the visitor's browser. The request is cross-origin,
  * which is fine because JB-Router's /api/health answers with `access-control-allow-origin: *`.
- * (A server-side probe from the deployer Worker would not work: requests to *.workers.dev
- * made *from inside* Cloudflare resolve against the local worker registry and 404 with 1042.)
+ * (A server-side probe from the deployer Worker would not work: requests to *.workers.dev made
+ * *from inside* Cloudflare resolve against the local worker registry and 404 with error 1042.)
  */
-async function waitForHealth({ fetchImpl, url, signal, log, emit }) {
+async function waitForHealth({ fetchImpl, url, signal, emit }) {
   const started = Date.now();
   const deadline = started + 5 * 60 * 1000;
   let attempt = 0;
   let last = null;
-  let announced = false;
   while (Date.now() < deadline) {
     attempt++;
     try {
@@ -321,10 +337,7 @@ async function waitForHealth({ fetchImpl, url, signal, log, emit }) {
         const data = await res.json().catch(() => null);
         if (data && data.ok) return { ok: true, ms: Date.now() - started, status: res.status };
       }
-      if (!announced) {
-        log("ورکر نصب شد؛ آدرس عمومی هنوز در حال فعال شدن است، چند لحظه صبر می‌کنیم…");
-        announced = true;
-      }
+      if (attempt === 1) emit({ type: "event", key: "health.waiting", data: {} });
     } catch (err) {
       if (signal && signal.aborted) throw err;
       last = last || "network";
@@ -332,6 +345,5 @@ async function waitForHealth({ fetchImpl, url, signal, log, emit }) {
     await new Promise((r) => setTimeout(r, 4000));
     emit({ type: "wait", attempt });
   }
-  log(`پاسخ سلامت تا پایان زمان انتظار نرسید (آخرین وضعیت: ${last ?? "بی‌پاسخ"}).`);
   return { ok: false, status: last };
 }

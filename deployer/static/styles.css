@@ -1,0 +1,503 @@
+/* JB-Router Wizard — visual language modelled on the BPB Panel wizard (GPL-3.0 project,
+   design re-implemented from scratch; see deployer/README.md#credits).
+   Palette: deep navy → blue gradient, glass card, terminal output. */
+
+:root {
+    --bg-gradient: linear-gradient(90deg, #000328, #00458e);
+    --card-bg: rgba(15, 23, 42, 0.5);
+    --input-bg: rgba(2, 6, 23, 0.5);
+    --toast-bg: #0f172a;
+    --toast-header-bg: rgba(30, 41, 59, 0.5);
+
+    --border-ui: #334155;
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --brand: #3b82f6;
+    --brand-hover: #60a5fa;
+
+    --info: #60a5fa;
+    --success: #4ade80;
+    --failure: #dc2626;
+    --terminal-text: #93c5fd;
+
+    --radius-card: 1.5rem;
+    --radius-ui: 0.75rem;
+
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.85rem;
+    --space-lg: 1rem;
+    --space-xl: 2rem;
+
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.95rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.5rem;
+
+    --shadow-icon: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06));
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 20px 40px -15px rgba(0, 3, 40, 0.5), 0 35px 60px -15px rgba(0, 69, 142, 0.3);
+    --shadow-terminal: 0 4px 12px rgba(0, 0, 0, 0.4), 0 16px 32px -8px rgba(0, 3, 40, 0.6);
+    --shadow-input: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(255, 255, 255, 0.05);
+    --shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 8px 20px -4px rgba(59, 130, 246, 0.3);
+
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: "Ubuntu", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-gradient);
+}
+
+h4 {
+    font-weight: 500;
+}
+
+a {
+    color: var(--brand);
+    text-decoration-line: unset;
+}
+
+a:hover {
+    color: var(--brand-hover);
+}
+
+ol {
+    list-style-position: inside;
+    text-align: left;
+    font-size: smaller;
+    line-height: 2;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.flex-center,
+.toast-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.absolute-y-center,
+.input-icon,
+.input-after-icon {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    color: var(--text-primary);
+}
+
+.card {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: none;
+    border-radius: var(--radius-card);
+    padding: var(--space-xl);
+    box-shadow: var(--shadow-card);
+}
+
+.card-header-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-xl);
+    text-align: center;
+}
+
+.card-header-group {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+    align-items: center;
+}
+
+.header {
+    font-size: var(--font-size-lg);
+    line-height: 2rem;
+    font-weight: 700;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+}
+
+.icon {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    filter: var(--shadow-icon);
+}
+
+.subtitle {
+    font-size: var(--font-size-sm);
+    line-height: 1.25rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xl);
+}
+
+#user {
+    color: var(--brand-hover);
+    margin-bottom: var(--space-sm);
+}
+
+/* ------------------------------------------------------------------ form */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+}
+
+.input-field,
+.form-select {
+    width: 100%;
+    line-height: 1.25rem;
+    display: flex;
+    background-color: var(--input-bg);
+    border: none;
+    border-radius: var(--radius-ui);
+    padding: var(--space-md) var(--space-xl) var(--space-md) 3rem;
+    outline: none;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    box-shadow: var(--shadow-input);
+    transition: var(--transition);
+}
+
+.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+}
+
+.form-select option {
+    background-color: var(--toast-bg);
+    color: var(--text-primary);
+}
+
+.input-field::placeholder {
+    color: var(--text-muted);
+}
+
+.input-field:focus,
+.form-select:focus {
+    box-shadow: var(--shadow-input-focus);
+}
+
+.input-icon {
+    left: var(--space-md);
+    color: var(--text-muted);
+    transition: var(--transition);
+    pointer-events: none;
+}
+
+.input-group:focus-within .input-icon {
+    color: var(--brand-hover);
+}
+
+.input-after-icon {
+    right: var(--space-md);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0;
+    font: inherit;
+}
+
+.input-after-icon:hover {
+    color: #e2e8f0;
+}
+
+.input-after-icon.static {
+    pointer-events: none;
+}
+
+/* Material-style icons, inlined as SVG so no icon font is required */
+.msr {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    color: inherit;
+}
+
+.msr svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: currentColor;
+    display: block;
+}
+
+.btn-primary {
+    background-color: transparent;
+    border: 2px solid var(--brand);
+    color: var(--brand);
+    width: max-content;
+    padding: 15px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    border-radius: var(--radius-ui);
+    cursor: pointer;
+    margin: 0 auto;
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    transition: var(--transition);
+    outline: none;
+}
+
+.btn-primary:hover {
+    background: var(--bg-gradient);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+.btn-primary:disabled {
+    cursor: progress;
+    opacity: 0.65;
+}
+
+.btn-secondary {
+    border: none;
+    background-color: transparent;
+    color: var(--brand);
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.btn-secondary:hover {
+    color: var(--brand-hover);
+    scale: 1.1;
+}
+
+.btn-secondary:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+/* ------------------------------------------------------------------ terminal */
+
+.terminal {
+    background-color: rgba(0, 0, 0, 0.4);
+    border: none;
+    color: var(--terminal-text);
+    border-radius: var(--radius-ui);
+    padding: var(--space-lg);
+    margin-top: var(--space-xl);
+    font-size: var(--font-size-sm);
+    line-height: 1.25rem;
+    font-family: "Ubuntu Mono", ui-monospace, Consolas, monospace;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 22rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    display: block;
+    box-shadow: var(--shadow-terminal);
+    scroll-behavior: smooth;
+}
+
+.terminal-info {
+    color: var(--info);
+    font-weight: bold;
+}
+
+.terminal-success {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.terminal-error {
+    color: var(--failure);
+    font-weight: bold;
+}
+
+.terminal-url {
+    color: var(--brand);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.terminal-url:hover {
+    color: var(--brand-hover);
+}
+
+.terminal-secret {
+    color: var(--text-primary);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    padding: 0 0.3rem;
+}
+
+.terminal-copy {
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: 1px solid var(--border-ui);
+    background: transparent;
+    border-radius: 0.35rem;
+    font-family: inherit;
+    font-size: var(--font-size-xs);
+    margin-left: var(--space-sm);
+    padding: 0 0.4rem;
+    transition: var(--transition);
+}
+
+.terminal-copy:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------ toasts */
+
+.toast-card {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--toast-bg);
+    border: 1px solid var(--border-ui);
+    border-radius: var(--radius-ui);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.toast-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    background-color: var(--toast-header-bg);
+    border-bottom: 1px solid var(--border-ui);
+}
+
+.toast-title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.toast-success-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    color: var(--success);
+}
+
+.toast-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    transition: all 0.2s ease;
+}
+
+.toast-close-btn:hover {
+    color: var(--text-primary);
+    scale: 1.1;
+}
+
+.toast-body {
+    padding: var(--space-lg);
+    font-size: var(--font-size-sm);
+    color: #cbd5e1;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.toast-link {
+    color: var(--brand);
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    transition: all 0.2s ease;
+}
+
+.toast-link:hover {
+    color: var(--brand-hover);
+    scale: 1.1;
+}
+
+.toast-link:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+/* ------------------------------------------------------------------ misc */
+
+@media (max-width: 420px) {
+    .card {
+        padding: var(--space-lg);
+    }
+
+    .header {
+        font-size: 1.25rem;
+    }
+}
