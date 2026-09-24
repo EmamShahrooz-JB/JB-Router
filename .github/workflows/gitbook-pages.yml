@@ -1,11 +1,10 @@
 name: Deploy GitBook docs to GitHub Pages
 
+# Manual only: publishing the docs site needs GitHub Pages enabled for the
+# repository and a matching base path. Running it on every push would just add a
+# failing check to unrelated commits, so trigger it by hand when you want it
+# (Actions -> Deploy GitBook docs -> Run workflow).
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - "gitbook/**"
-      - ".github/workflows/gitbook-pages.yml"
   workflow_dispatch:
 
 concurrency:

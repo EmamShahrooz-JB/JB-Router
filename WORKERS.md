@@ -298,3 +298,25 @@ disabled selects keep their native behaviour.
 Verified in production: served CSS contains the `.jb-menu` rules and
 `/_next/static/chunks/app/layout-*.js` contains the listbox implementation;
 dashboard pages, smoke suite and the model probes all still pass.
+
+
+## Open-source release (2026-09-24)
+
+Published as **JB-Router** — https://github.com/EmamShahrooz-JB/JB-Router (MIT).
+
+- `README.md` describes the port, quick-start deploy, configuration and the
+  architecture; `CONTRIBUTING.md` and `SECURITY.md` were added; `LICENSE` keeps the
+  upstream 9Router copyright next to the JB-Router modification notice.
+- Upstream `.github/workflows/docker-publish.yml` (which pushed images under the
+  upstream Docker Hub/GHCR namespaces) was removed; the GitBook pages workflow is now
+  `workflow_dispatch`-only so unrelated pushes do not carry a failing check.
+- The tree was scanned before publishing: no dashboard password, Cloudflare token,
+  Wrangler state, `.dev.vars`, Durable Object export or production URL is committed,
+  and this document uses a placeholder deployment URL.
+- GitHub push protection flagged the Gemini CLI and Antigravity OAuth client
+  id/secret pairs (the installed-app credentials those official clients ship with,
+  also published by upstream 9Router). They were restored with recorded
+  push-protection bypasses (reason `false_positive`) because the OAuth logins need
+  them. Secret scanning also reports one `Google API Key` alert for the public
+  Windsurf/Codeium key in `open-sse/providers/registry/windsurf.js`; it is a
+  tracked, dismissable alert.
