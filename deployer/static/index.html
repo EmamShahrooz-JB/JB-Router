@@ -9,12 +9,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap"
         rel="stylesheet">
     <link href="styles.css" rel="stylesheet" />
+    <script>
+        // Same theme contract as the dashboard (src/app/layout.js): the persisted zustand
+        // `theme` key + `system` preference decide whether <html> gets the `dark` class.
+        (function () {
+            try {
+                var stored = localStorage.getItem("theme");
+                var theme = stored ? (JSON.parse(stored).state || {}).theme : "system";
+                theme = theme || "system";
+                var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                if (theme === "dark" || (theme === "system" && prefersDark)) {
+                    document.documentElement.classList.add("dark");
+                }
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
 </head>
 
 <body>
+    <!-- the dashboard's faint landing grid -->
+    <div class="grid-overlay" aria-hidden="true"></div>
+
     <!-- Inline Material-style icons (no icon font dependency) -->
     <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
         <symbol id="i-key" viewBox="0 0 24 24">
@@ -53,6 +71,12 @@
         <symbol id="i-copy" viewBox="0 0 24 24">
             <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
         </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24">
+            <path d="M12.3 2a9 9 0 1 0 9.7 13.3A7.5 7.5 0 0 1 12.3 2z" />
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24">
+            <path d="M12 7.5A4.5 4.5 0 1 0 16.5 12A4.5 4.5 0 0 0 12 7.5zm0-5.5l1.6 2.8h-3.2zm0 20l-1.6-2.8h3.2zM1.9 12L4.7 10.4v3.2zm20.2 0l-2.8 1.6v-3.2zM4.9 4.9l3.1.5l-2.6 1.9zm14.2 14.2l-3.1-.5l2.6-1.9zM19.1 4.9l-.5 3.1l-1.9-2.6zM4.9 19.1l.5-3.1l1.9 2.6z" />
+        </symbol>
         <symbol id="i-external" viewBox="0 0 24 24">
             <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
         </symbol>
@@ -64,16 +88,21 @@
                 <div class="card-header-group">
                     <h3 class="header">
                         <img src="favicon.svg" class="icon" alt="" />
-                        JB-Router Wizard
+                        JB-Router <span class="brand-word">Wizard</span>
                     </h3>
-                    <a href="https://github.com/EmamShahrooz-JB/JB-Router" target="_blank" rel="noopener">
-                        <span class="msr">
+                    <a class="github-link" href="https://github.com/EmamShahrooz-JB/JB-Router" target="_blank"
+                        rel="noopener" title="JB-Router on GitHub">
+                        <span>
                             <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                             </svg>
                         </span>
                     </a>
+                    <button id="themeToggle" class="theme-toggle" type="button" title="Toggle theme">
+                        <span id="themeIconDark" class="msr"><svg><use href="#i-moon"></use></svg></span>
+                        <span id="themeIconLight" class="msr hidden"><svg><use href="#i-sun"></use></svg></span>
+                    </button>
                 </div>
                 <p class="subtitle">Install JB-Router efficiently</p>
                 <h4 id="user" style="display: none;"></h4>

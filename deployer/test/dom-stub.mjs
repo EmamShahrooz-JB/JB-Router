@@ -73,7 +73,28 @@ export const document = {
 };
 
 export function installGlobals(base) {
+  const htmlClasses = new Set();
+  const htmlElement = {
+    tagName: "HTML",
+    classList: {
+      add: (name) => htmlClasses.add(name),
+      remove: (name) => htmlClasses.delete(name),
+      contains: (name) => htmlClasses.has(name),
+      toggle: (name, force) => {
+        const on = force === undefined ? !htmlClasses.has(name) : Boolean(force);
+        if (on) htmlClasses.add(name); else htmlClasses.delete(name);
+        return on;
+      }
+    }
+  };
+  document.documentElement = htmlElement;
   globalThis.document = document;
+  globalThis.localStorage = {
+    store: new Map(),
+    getItem(k) { return this.store.has(k) ? this.store.get(k) : null; },
+    setItem(k, v) { this.store.set(k, String(v)); },
+    removeItem(k) { this.store.delete(k); }
+  };
   globalThis.window = globalThis;
   globalThis.location = { search: "", origin: base, pathname: "/", href: base + "/" };
   globalThis.sessionStorage = {

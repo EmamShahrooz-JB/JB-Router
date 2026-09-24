@@ -257,7 +257,7 @@ async function start(event) {
     line("info", `Dashboard password: `);
     appendSecret(password);
     appendCopy("copy", password);
-    line("info", `Signed in as user "admin". Finished in ${Math.round((Date.now() - started) / 1000)}s.`);
+    line("info", `Log in as "admin" with that password · finished in ${Math.round((Date.now() - started) / 1000)}s.`);
     standby();
 
     $("liveUrl").href = `${url}/login`;
@@ -349,10 +349,35 @@ function handleMilestone(event, context) {
   }
 }
 
+/* ------------------------------------------------------------------ theme */
+
+/* Mirrors the dashboard's theme store: same localStorage key ("theme", zustand-persist
+   shape) and the same `dark` class on <html> that the app's applyTheme() sets. */
+function currentTheme() {
+  if (document.documentElement.classList.contains("dark")) return "dark";
+  return "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  $("themeIconDark").classList.toggle("hidden", theme === "dark");
+  $("themeIconLight").classList.toggle("hidden", theme !== "dark");
+  try {
+    const stored = JSON.parse(localStorage.getItem("theme") || "{}");
+    stored.state = { ...(stored.state || {}), theme };
+    localStorage.setItem("theme", JSON.stringify(stored));
+  } catch {
+    /* private mode — ignore */
+  }
+}
+
 /* ------------------------------------------------------------------ boot */
 
 function boot() {
   $("tokenTemplate").href = buildTokenTemplateUrl();
+  $("themeToggle").addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
+  $("themeIconDark").classList.toggle("hidden", currentTheme() === "dark");
+  $("themeIconLight").classList.toggle("hidden", currentTheme() !== "dark");
   applyQueryParams();
 
   $("togglePassword").addEventListener("click", () => {

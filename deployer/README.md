@@ -4,10 +4,15 @@
 Cloudflare API token and the Worker, static assets, Durable Object and secrets are created on
 *their* account in about 20 seconds.
 
-The page is a single glass card on a navy→blue gradient with a live terminal panel — the same
-wizard pattern popularised by [BPB-Wizard](https://github.com/bia-pain-bache/BPB-Wizard)
-(GPL-3.0); the markup/CSS here is an independent implementation of that *design language*
-(see [Credits](#credits)), not a copy of their code.
+The page is a single card with the steps list, install-type select, live terminal panel and
+success/quick-link toasts — the wizard *layout* popularised by
+[BPB-Wizard](https://github.com/bia-pain-bache/BPB-Wizard) (GPL-3.0, re-implemented from
+scratch — see [Credits](#credits)) — but **painted entirely with 9Router's own design tokens**,
+copied from the dashboard's `src/app/globals.css`: brand orange `#E56A4A`, the light
+`#FDFAF6` / dark `#1a1a1a` neutral-warm surfaces, 10/14 px radii, the faint landing-grid
+overlay, Inter, and the same card/Button/Input recipes. It follows the dashboard's theme
+contract too: the `dark` class on `<html>` driven by the persisted `theme` key, plus a
+moon/sun toggle in the header.
 
 - **صفحهٔ زنده:** https://jb-deployer.emamshahroozjb-config-896.workers.dev
 - بدون CLI، بدون Git، بدون GitHub — فقط یک API Token با قالب *Edit Cloudflare Workers*.
@@ -138,12 +143,17 @@ re-install **13.2 s**.
 
 ## Credits
 
-The wizard's **visual design** follows [BPB-Wizard](https://github.com/bia-pain-bache/BPB-Wizard)
-by [bia-pain-bache](https://github.com/bia-pain-bache) (GPL-3.0) — glass card on a
-`#000328 → #00458e` gradient, outlined Install button, terminal output panel. Because that
-project is GPL-3.0, none of its code, CSS or assets were copied: this folder contains an
-independent implementation of the same design language, written for JB-Router and licensed
-with the rest of this repository under MIT.
+Two independent influences, no code shared with either:
+
+1. **Colour, type and components** come from JB-Router's own dashboard, i.e. the 9Router theme
+   (`src/app/globals.css`): brand `#E56A4A` scale, warm neutrals, `--radius-brand` 10px,
+   `--shadow-focus` ring, landing-grid overlay, favicon gradient `#f97815 → #c2590a`,
+   Inter. The wizard reads the same `theme` localStorage key and toggles the same `dark`
+   class, so it looks like a page of the panel it installs.
+2. **Page layout** (steps list → fields → Install button → terminal output → toasts) follows
+   [BPB-Wizard](https://github.com/bia-pain-bache/BPB-Wizard) by
+   [bia-pain-bache](https://github.com/bia-pain-bache), which is **GPL-3.0** — so none of its
+   code, CSS or assets were copied; the markup/CSS here is an independent implementation.
 
 ## Limits & caveats
 
