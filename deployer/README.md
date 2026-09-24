@@ -43,7 +43,7 @@ browser ──(visitor's token, one request at a time)──▶ jb-deployer Work
 | Open-proxy abuse | Every relay endpoint forwards to a **fixed** Cloudflare path. Token endpoints are validated by Cloudflare itself; the asset relay additionally requires a Cloudflare-issued assets JWT (obtainable only with a valid token). |
 | `/api/script` | Uploads *our own published build* (from this Worker's static assets) — a caller can only install JB-Router into an account they already control. |
 | `/api/health` | Restricted to `https://*.workers.dev` targets. |
-| Payload integrity | `worker.js` + `assets.zip` are built from the public release by `deployer/build/make-bundle.mjs` and shipped with the Worker, so nothing is fetched from third parties at deploy time. |
+| Payload integrity | `worker.js` + `assets.zip` are built from the public release by `deployer/tools/make-bundle.mjs` and shipped with the Worker, so nothing is fetched from third parties at deploy time. |
 | Everything else | Full source in this folder; MIT; the deployed page says exactly what happens to the token and tells users they can roll the token afterwards. |
 
 ## What the deployer actually does (reverse-engineered API details)
@@ -104,8 +104,8 @@ deployer/
 
 ```bash
 npm run workers:build                 # produces .open-next/ (the app bundle the deployer ships)
-node deployer/build/make-vendor.mjs   # static/vendor/blake3.js
-node deployer/build/make-bundle.mjs --release v0.5.86
+node deployer/tools/make-vendor.mjs   # static/vendor/blake3.js
+node deployer/tools/make-bundle.mjs --release v0.5.87
 
 cd deployer
 CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… npx wrangler deploy --config wrangler.jsonc
@@ -123,7 +123,7 @@ CFT=<token> ACC=<account id> SUB=<workers.dev subdomain> \
   node deployer/test/e2e.mjs --base=http://127.0.0.1:8799 --name=jb-router-test
 
 # build the page (React + Vite) into static/index.html
-node deployer/build/make-page.mjs
+node deployer/tools/make-page.mjs
 
 # the page itself: real Chromium fills the form, presses Install, asserts the terminal
 CFT=… BASE=https://jb-deployer.<sub>.workers.dev \

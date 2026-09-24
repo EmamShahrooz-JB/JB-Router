@@ -170,7 +170,7 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 
 | | |
 | --- | --- |
-| **Deploy-ready build** | [`v0.5.86`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.86) — `jb-router-v0.5.86-opennext-bundle.zip` (unzip and `wrangler deploy`) |
+| **Deploy-ready build** | [`v0.5.87`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.87) — `jb-router-v0.5.87-opennext-bundle.zip` (unzip and `wrangler deploy`) |
 | **CLI** | `cli/` is published as the [`jb-router-cli`](https://www.npmjs.com/package/jb-router-cli) npm package (bin: `jb-router`). Publishing runs from the *Publish CLI to npm* workflow with an `NPM_TOKEN` secret, because the CLI embeds a full production build |
 | **Web deployer** | [`deployer/`](./deployer) — the `jb-deployer` Worker that installs JB-Router on any account from the browser (live: <https://jb-deployer.jb-router.workers.dev>) |
 | **Edge Lite (prototype)** | [JB-Router-Edge-Lite](https://github.com/EmamShahrooz-JB/JB-Router-Edge-Lite) — the early small Hono + static-dashboard Worker, kept for reference only |

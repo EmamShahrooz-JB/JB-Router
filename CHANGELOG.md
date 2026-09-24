@@ -1,3 +1,13 @@
+# v0.5.87 (2026-09-24)
+
+## Changes
+- **Rebrand**: the project is now **JB-Router** end to end — every `9Router` / `9Remote` / `9r` trace in names, environment variables, internal headers, cookies, salts, data paths, icons, docs and link targets was replaced (the upstream MIT copyright stays in `LICENSE`)
+- **Data path**: the data directory is `~/.jb-router`; existing installs keep using `~/.9router` automatically so their database is never orphaned
+- **Icons**: app favicon and PWA icons are the JB monogram on the project gradient (`#f97815 → #c2590a`)
+- **Sidebar**: removed the external promo row
+- **Deployer**: https://jb-deployer.jb-router.workers.dev serves this build; `/api/meta` and `/bundle/*` are sent `no-store` so a new release is picked up immediately
+- **Build tooling**: release packaging moved to `deployer/tools/` (`make-release.mjs` writes the GitHub asset + its sha256)
+
 # v0.5.86 (2026-09-23)
 
 ## Features
