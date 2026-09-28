@@ -178,7 +178,7 @@ export async function getBundleManifest({ apiBase = "", fetchImpl = fetch, signa
 /* ------------------------------------------------------------------ deploy */
 
 export const STEPS = [
-  "verify", "bundle", "hash", "session", "assets", "script", "secrets", "enable", "health"
+  "verify", "bundle", "hash", "session", "assets", "script", "secrets", "enable", "files", "health"
 ];
 
 /**
@@ -201,7 +201,7 @@ export const STEPS = [
  */
 export async function runDeploy(opts) {
   const {
-    cfToken, accountId, name, subdomain, jwtSecret, password, release, dryRun = false,
+    cfToken, accountId, name, subdomain, jwtSecret, password, release, dryRun = false, preserveSecrets = false,
     apiBase = "", zipUrl = apiBase + "/bundle/assets.zip", mimeMapUrl = apiBase + "/bundle/mime-map.js",
     fetchImpl = fetch, inflateRaw = inflateRawStream, onEvent = () => {}, signal
   } = opts;
@@ -231,7 +231,7 @@ export async function runDeploy(opts) {
   const meta = await (await fetchImpl(apiBase + "/api/meta", { signal })).json();
   if (meta.streaming) {
     return runStreamingDeploy({
-      cfToken, accountId, name, subdomain, jwtSecret, password, release: release || meta.release,
+      cfToken, accountId, name, subdomain, jwtSecret, password, preserveSecrets, release: release || meta.release,
       apiBase, fetchImpl, onEvent, signal
     });
   }
@@ -332,6 +332,27 @@ export async function runDeploy(opts) {
   };
   await Promise.all(Array.from({ length: Math.min(3, jobs.length) }, drain));
 
+  /* Cloudflare answers the odd request with 10013 "unknown error" or an HTML 503 page while an
+   * edge is busy streaming a deploy; those are transient, so the step is simply repeated. */
+  const postJsonRetry = async (path, body, stepId, attempts = 6) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await postJson(fetchImpl, apiBase, path, body, signal);
+      } catch (error) {
+        const status = error && error.status;
+        const message = String((error && error.message) || error);
+        const transient = !status || status >= 500 || status === 429 || /10013|unknown error/i.test(message);
+        if (!transient || attempt >= attempts) {
+          if (transient) throw new DeployError("Cloudflare kept answering " + (status || "with an error") + " — please run the install again.", status);
+          throw error;
+        }
+        event("retry", { path, attempt, status: status || 0 });
+        step(stepId, "active", `Cloudflare is busy — retrying (${attempt}/${attempts - 1})`);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(2000 + 3000 * attempt, 15000)));
+      }
+    }
+  };
+
   if (!assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
   assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
   event("assets.ok", { total: entries.length, pending });
@@ -339,22 +360,29 @@ export async function runDeploy(opts) {
 
   /* 6. worker script -------------------------------------------------------- */
   step("script", "active");
-  const script = await postJson(fetchImpl, apiBase, "/api/script", {
-    token: cfToken, accountId, name, assetsJwt, jwtSecret, password
-  }, signal);
+  // An update keeps the secrets already on the account: the dashboard password and the session
+  // secret of a running installation must survive a code update, so they are not even sent.
+  const scriptBody = { token: cfToken, accountId, name, assetsJwt, preserveSecrets };
+  if (!preserveSecrets) {
+    scriptBody.jwtSecret = jwtSecret;
+    scriptBody.password = password;
+  }
+  const script = await postJsonRetry("/api/script", scriptBody, "script");
   event("script.ok", { name: script.id, deploymentId: script.deploymentId, hasAssets: script.hasAssets });
   step("script", "done");
 
   /* 7. secrets -------------------------------------------------------------- */
   step("secrets", "active");
-  const secrets = await postJson(fetchImpl, apiBase, "/api/secrets", {
-    token: cfToken, accountId, name,
-    secrets: [
-      { name: "JWT_SECRET", text: jwtSecret },
-      { name: "INITIAL_PASSWORD", text: password }
-    ]
-  }, signal);
-  event("secrets.ok", { stored: secrets.stored });
+  const secrets = preserveSecrets
+    ? { stored: [] }
+    : await postJson(fetchImpl, apiBase, "/api/secrets", {
+        token: cfToken, accountId, name,
+        secrets: [
+          { name: "JWT_SECRET", text: jwtSecret },
+          { name: "INITIAL_PASSWORD", text: password }
+        ]
+      }, signal);
+  event("secrets.ok", { stored: secrets.stored, preserved: preserveSecrets });
   step("secrets", "done");
 
   /* 8. workers.dev ---------------------------------------------------------- */
@@ -363,6 +391,44 @@ export async function runDeploy(opts) {
   const url = `https://${name}.${subdomain}.workers.dev`;
   event("enable.ok", { url });
   step("enable", "done");
+
+  /* Asset completeness, decided by Cloudflare itself. Asking for a fresh upload session over the
+   * same manifest returns the parts Cloudflare still considers missing, so this is the only
+   * trustworthy completeness signal available to the page: probing the freshly deployed Worker
+   * is not possible (its host sends no CORS headers, and Cloudflare refuses Worker→Worker
+   * fetches with error 1042) and would be wrong anyway while a new deployment propagates.
+   * Whatever is still missing is uploaded and deployed again instead of shipping a panel that
+   * 404s a page. */
+  step("files", "active");
+  let missingAssets = 0;
+  try {
+    let state = await postJsonRetry("/api/session-bundle", { token: cfToken, accountId, name }, "files");
+    for (let attempt = 0; attempt < 3 && (state.pendingFiles || 0) > 0; attempt += 1) {
+      const count = state.pendingFiles || 0;
+      event("files.repair", { missing: count, attempt: attempt + 1 });
+      step("files", "active", `re-uploading ${count} missing file(s)`);
+      if (state.jwt) assetsJwt = state.jwt;
+      await drain(state.uploads || []);
+      const repairBody = {
+        token: cfToken, accountId, name, preserveSecrets,
+        assetsJwt: String(assetsJwt).replace(/^cfwau_/, "")
+      };
+      if (!preserveSecrets) {
+        repairBody.jwtSecret = jwtSecret;
+        repairBody.password = password;
+      }
+      const repaired = await postJsonRetry("/api/script", repairBody, "files");
+      event("files.redeployed", { deploymentId: repaired.deploymentId, attempt: attempt + 1 });
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      state = await postJsonRetry("/api/session-bundle", { token: cfToken, accountId, name }, "files");
+    }
+    missingAssets = state.pendingFiles || 0;
+  } catch (error) {
+    if (error instanceof DeployError) throw error;
+    event("files.skipped", { message: String((error && error.message) || error) });
+  }
+  event("files.check", { total: index.files, missing: missingAssets });
+  step("files", missingAssets ? "error" : "done", missingAssets ? `${missingAssets} missing` : String(index.files));
 
   /* 9. health --------------------------------------------------------------- */
   step("health", "active");
@@ -373,7 +439,8 @@ export async function runDeploy(opts) {
   const result = {
     name, url, loginUrl: url + "/login", apiBaseUrl: url + "/v1",
     health: health.ok ? "ok" : "unknown", status: health.status || 0,
-    accountId, release: release || meta.release, password
+    accountId, release: release || meta.release,
+    password: preserveSecrets ? null : password, secretsPreserved: preserveSecrets
   };
   emit({ type: "result", result });
   return result;
@@ -458,7 +525,7 @@ async function waitForHealth({ fetchImpl, url, signal, emit, foregroundMs = 0 })
  */
 async function runStreamingDeploy(opts) {
   const {
-    cfToken, accountId, name, subdomain, jwtSecret, password, release,
+    cfToken, accountId, name, subdomain, jwtSecret, password, release, preserveSecrets = false,
     apiBase = "", fetchImpl = fetch, onEvent = () => {}, signal, foregroundMs = 0
   } = opts;
 
@@ -480,50 +547,110 @@ async function runStreamingDeploy(opts) {
   const uploads = session.uploads || [];
   event("session.ok", {
     pending: session.pendingFiles || 0, buckets: uploads.length, files: index.files,
-    pendingBytes: session.pendingBytes || 0, streamed: true
+    pendingBytes: session.pendingBytes || 0, streamed: true, repair: !!session.repair
   });
   step("session", "done");
 
-  /* asset chunks, streamed inside Cloudflare */
+  /* Asset chunks, streamed inside Cloudflare. Uploaded one chunk at a time on purpose:
+   * issuing several uploads into the same assets session concurrently makes Cloudflare
+   * occasionally drop a file from a bucket without reporting an error, which leaves the
+   * installed Worker with a missing chunk and a broken page. */
   step("assets", "active");
-  const totalBytes = uploads.reduce((n, u) => n + u.bytes, 0);
-  let uploadedBytes = 0;
-  let cursor = 0;
-  const nextChunk = async () => {
-    while (cursor < uploads.length) {
-      const item = uploads[cursor++];
-      const result = await postJson(fetchImpl, apiBase, "/api/upload-chunk", {
+  let pending = session.pendingFiles || 0;
+  const drain = async (list) => {
+    const totalBytes = list.reduce((n, u) => n + u.bytes, 0);
+    let uploadedBytes = 0;
+    let done = 0;
+    for (const item of list) {
+      const result = await postJsonRetry("/api/upload-chunk", {
         token: cfToken, accountId, name, assetsJwt, chunk: item.index
-      }, signal);
+      }, "assets");
       if (result.jwt) assetsJwt = result.jwt;
       uploadedBytes += item.bytes;
+      done += 1;
       emit({ type: "progress", id: "assets", received: uploadedBytes, total: totalBytes });
-      event("assets.chunk", { index: cursor, chunks: uploads.length, files: item.files });
+      event("assets.chunk", { index: done, chunks: list.length, files: item.files });
+      if (done < list.length) await new Promise((resolve) => setTimeout(resolve, 400));
     }
   };
-  await Promise.all(Array.from({ length: Math.min(3, uploads.length) }, nextChunk));
-  if (uploads.length && !assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
-  if (assetsJwt) assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
-  event("assets.ok", { total: index.files, pending: session.pendingFiles || 0, streamed: true });
+  /* Cloudflare answers the odd request with 10013 "unknown error" or a 5xx when a burst of
+   * installs hits it; those are transient, so the step is repeated instead of failing the
+   * whole install on a hiccup. */
+  const postJsonRetry = async (path, body, stepId, attempts = 6) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await postJson(fetchImpl, apiBase, path, body, signal);
+      } catch (error) {
+        const status = error && error.status;
+        const message = String((error && error.message) || error);
+        // Cloudflare answers 503/5xx with an HTML error page when the edge is busy streaming
+        // a deploy; that is transient and the step is simply repeated.
+        const transient = !status || status >= 500 || status === 429 || /10013|unknown error/i.test(message);
+        if (!transient || attempt >= attempts) {
+          if (transient) throw new DeployError("Cloudflare kept answering " + (status || "with an error") + " — please run the install again.", status);
+          throw error;
+        }
+        event("retry", { path, attempt, status: status || 0 });
+        step(stepId, "active", `Cloudflare is busy — retrying (${attempt}/${attempts - 1})`);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(2000 + 3000 * attempt, 15000)));
+      }
+    }
+  };
+
+  await drain(uploads);
+
+  /* Completeness signal: Cloudflare only mints the "session complete" JWT (audience `ewc`) once
+   * every part it asked for has landed. If that token never shows up, a part was dropped —
+   * something the assets endpoint does not report as an error — so the parts are sent again
+   * inside the same session instead of deploying a Worker with silently missing files.
+   * The session JWT itself is never replaced: the deployment must reference the session the
+   * parts were actually uploaded into. */
+  const jwtAudience = (value) => {
+    try {
+      const payload = String(value).split(".")[1] || "";
+      const padded = payload.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (payload.length % 4)) % 4);
+      return JSON.parse(atob(padded)).aud || null;
+    } catch {
+      return null;
+    }
+  };
+  let complete = !uploads.length || jwtAudience(assetsJwt) === "ewc";
+  for (let attempt = 0; attempt < 3 && !complete; attempt += 1) {
+    event("assets.retry", { attempt: attempt + 1, files: index.files });
+    step("assets", "active", `re-sending ${uploads.length} parts (${attempt + 1})`);
+    await drain(uploads);
+    complete = jwtAudience(assetsJwt) === "ewc";
+  }
+  if (uploads.length && !complete) {
+    fail("assets", "Cloudflare did not confirm the asset upload — the install would be missing files. Please run the install again.");
+  }
+  if (!assetsJwt) fail("assets", "Cloudflare did not return the asset upload JWT.");
+  assetsJwt = String(assetsJwt).replace(/^cfwau_/, "");
+  event("assets.ok", { total: index.files, pending: complete ? 0 : pending, streamed: true });
   step("assets", "done", String(index.files));
 
   /* worker module (streamed from the deployer's own assets), secrets, url */
   step("script", "active");
-  const script = await postJson(fetchImpl, apiBase, "/api/script", {
-    token: cfToken, accountId, name, assetsJwt, jwtSecret, password
-  }, signal);
+  const streamingScriptBody = { token: cfToken, accountId, name, assetsJwt, preserveSecrets };
+  if (!preserveSecrets) {
+    streamingScriptBody.jwtSecret = jwtSecret;
+    streamingScriptBody.password = password;
+  }
+  const script = await postJsonRetry("/api/script", streamingScriptBody, "script");
   event("script.ok", { name: script.id, deploymentId: script.deploymentId, hasAssets: script.hasAssets });
   step("script", "done");
 
   step("secrets", "active");
-  const secrets = await postJson(fetchImpl, apiBase, "/api/secrets", {
-    token: cfToken, accountId, name,
-    secrets: [
-      { name: "JWT_SECRET", text: jwtSecret },
-      { name: "INITIAL_PASSWORD", text: password }
-    ]
-  }, signal);
-  event("secrets.ok", { stored: secrets.stored });
+  const secrets = preserveSecrets
+    ? { stored: [] }
+    : await postJson(fetchImpl, apiBase, "/api/secrets", {
+        token: cfToken, accountId, name,
+        secrets: [
+          { name: "JWT_SECRET", text: jwtSecret },
+          { name: "INITIAL_PASSWORD", text: password }
+        ]
+      }, signal);
+  event("secrets.ok", { stored: secrets.stored, preserved: preserveSecrets });
   step("secrets", "done");
 
   step("enable", "active");
@@ -531,6 +658,44 @@ async function runStreamingDeploy(opts) {
   const url = `https://${name}.${subdomain}.workers.dev`;
   event("enable.ok", { url });
   step("enable", "done");
+
+  /* Asset completeness, decided by Cloudflare itself. Asking for a fresh upload session over the
+   * same manifest returns the parts Cloudflare still considers missing, so this is the only
+   * trustworthy completeness signal available to the page: probing the freshly deployed Worker
+   * is not possible (its host sends no CORS headers, and Cloudflare refuses Worker→Worker
+   * fetches with error 1042) and would be wrong anyway while a new deployment propagates.
+   * Whatever is still missing is uploaded and deployed again instead of shipping a panel that
+   * 404s a page. */
+  step("files", "active");
+  let missingAssets = 0;
+  try {
+    let state = await postJsonRetry("/api/session-bundle", { token: cfToken, accountId, name }, "files");
+    for (let attempt = 0; attempt < 3 && (state.pendingFiles || 0) > 0; attempt += 1) {
+      const count = state.pendingFiles || 0;
+      event("files.repair", { missing: count, attempt: attempt + 1 });
+      step("files", "active", `re-uploading ${count} missing file(s)`);
+      if (state.jwt) assetsJwt = state.jwt;
+      await drain(state.uploads || []);
+      const repairBody = {
+        token: cfToken, accountId, name, preserveSecrets,
+        assetsJwt: String(assetsJwt).replace(/^cfwau_/, "")
+      };
+      if (!preserveSecrets) {
+        repairBody.jwtSecret = jwtSecret;
+        repairBody.password = password;
+      }
+      const repaired = await postJsonRetry("/api/script", repairBody, "files");
+      event("files.redeployed", { deploymentId: repaired.deploymentId, attempt: attempt + 1 });
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      state = await postJsonRetry("/api/session-bundle", { token: cfToken, accountId, name }, "files");
+    }
+    missingAssets = state.pendingFiles || 0;
+  } catch (error) {
+    if (error instanceof DeployError) throw error;
+    event("files.skipped", { message: String((error && error.message) || error) });
+  }
+  event("files.check", { total: index.files, missing: missingAssets });
+  step("files", missingAssets ? "error" : "done", missingAssets ? `${missingAssets} missing` : String(index.files));
 
   /* health, polled from the visitor's browser (see waitForHealth) */
   step("health", "active");
@@ -541,7 +706,8 @@ async function runStreamingDeploy(opts) {
   const result = {
     name, url, loginUrl: url + "/login", apiBaseUrl: url + "/v1",
     health: health.ok ? "ok" : "unknown", status: health.status || 0,
-    accountId, release: release || index.release, password, streamed: true
+    accountId, release: release || index.release,
+    password: preserveSecrets ? null : password, secretsPreserved: preserveSecrets, streamed: true
   };
   emit({ type: "result", result });
   return result;

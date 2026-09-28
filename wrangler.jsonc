@@ -16,6 +16,10 @@
   "observability": {
     "enabled": true
   },
+  // Hourly update check (scheduled() in cloudflare-worker.js).
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
   "durable_objects": {
     "bindings": [
       {

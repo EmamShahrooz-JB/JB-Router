@@ -75,6 +75,7 @@ const MESSAGES: Record<string, string> = {
   script: "Installing the Worker module and the Durable Object…",
   secrets: "Storing the JWT_SECRET and INITIAL_PASSWORD secrets…",
   enable: "Publishing the workers.dev URL…",
+  files: "Confirming Cloudflare received every bundled file…",
   health: "Waiting for the deployment to go live…",
 };
 
@@ -460,7 +461,19 @@ export default function App() {
   const { resolved, set } = useTheme();
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
-  const [workerName, setWorkerName] = useState("jb-router");
+  // The dashboard links here as /?name=<worker>&update=<release> so an update needs no typing
+  // beyond the API token: the Worker name arrives prefilled and the page says what will happen.
+  const linkParams = (() => {
+    try {
+      return new URLSearchParams(globalThis.location?.search || "");
+    } catch {
+      return new URLSearchParams("");
+    }
+  })();
+  const linkedName = (linkParams.get("name") || "").replace(/[^a-zA-Z0-9-_]/g, "").slice(0, 63);
+  const linkedUpdate = (linkParams.get("update") || "").replace(/[^0-9.]/g, "");
+
+  const [workerName, setWorkerName] = useState(linkedName || "jb-router");
   const [deployType, setDeployType] = useState<"full" | "dryrun">("full");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -566,6 +579,7 @@ export default function App() {
         );
         break;
       case "session.ok":
+        if (d.repair) addLine("info", "This name already has an installation: it is rebuilt from a fresh upload session, so its assets are replaced while its data and password stay.");
         addLine(
           "success",
           num(d.pending) === 0
@@ -611,6 +625,19 @@ export default function App() {
         break;
       case "health.timeout":
         addLine("error", "The Worker did not answer the health check in time — try the dashboard URL, it usually comes up shortly.");
+        break;
+      case "files.repair":
+        addLine("info", `Cloudflare is missing ${num(d.missing)} file(s) from this deployment — uploading them again and re-deploying…`);
+        break;
+      case "files.redeployed":
+        addLine("info", "The missing files were uploaded and the Worker was deployed again.");
+        break;
+      case "files.check":
+        if (num(d.missing) === 0) addLine("success", `Cloudflare confirmed all ${num(d.total)} bundled files.`);
+        else addLine("error", `Cloudflare is still missing ${num(d.missing)} of ${num(d.total)} files — run the install again from this page.`);
+        break;
+      case "files.skipped":
+        addLine("info", "File check skipped: " + String(d.message || ""));
         break;
       case "failure":
         addLine("error", String(d.message || "Deployment failed."));
@@ -661,6 +688,9 @@ export default function App() {
         subdomain: resolvedSubdomain,
         password,
         jwtSecret,
+        // Opened from the panel's update banner: replace the code and the assets, keep the
+        // dashboard password and the session secret of the running installation.
+        preserveSecrets: Boolean(linkedUpdate),
         release: RELEASE,
         dryRun: deployType === "dryrun",
         foregroundMs: 40000,
@@ -682,10 +712,15 @@ export default function App() {
       );
       addLine("info", "Dashboard: ", undefined, [{ url: `${result.url}/login`, label: `${result.url}/login` }]);
       addLine("info", "API endpoint (OpenAI compatible): ", undefined, [{ url: `${result.url}/v1`, label: `${result.url}/v1` }]);
-      addLine("info", "Dashboard password: " + password, password);
-      addLine("info", `Log in as "admin" with that password · finished in ${Math.round((Date.now() - started) / 1000)}s.`);
+      if (result?.secretsPreserved) {
+        addLine("info", "Dashboard password unchanged — your existing password still works.");
+      } else {
+        addLine("info", "Dashboard password: " + password, password);
+        addLine("info", `Log in as "admin" with that password · finished in ${Math.round((Date.now() - started) / 1000)}s.`);
+      }
+      addLine("info", `Finished in ${Math.round((Date.now() - started) / 1000)}s.`);
 
-      setDeployment({ url: result.url, password });
+      setDeployment({ url: result.url, password: result?.secretsPreserved ? null : password });
       setQuickLink(
         `${location.origin}${location.pathname}?name=${encodeURIComponent(name)}&sub=${encodeURIComponent(
           resolvedSubdomain,
@@ -884,6 +919,13 @@ export default function App() {
                 <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   <Server className="h-3.5 w-3.5" /> Worker Name
                 </label>
+                {linkedUpdate ? (
+                  <span className="mb-2 block text-[11px] leading-relaxed text-text-secondary">
+                    Updating <strong className="text-text-main">{linkedName || "this Worker"}</strong> to{" "}
+                    <strong className="text-text-main">v{linkedUpdate}</strong>: the code and the bundled assets are
+                    replaced and the Worker is deployed again. Your data, provider connections and password stay.
+                  </span>
+                ) : null}
                 <div
                   className={cn(
                     "input-ring flex items-center gap-3 rounded-xl border bg-surface-elevated/5 px-4 py-3 transition-all light:bg-surface-elevated",
@@ -1079,7 +1121,7 @@ export default function App() {
                         <div className="flex items-center gap-2 rounded-lg bg-bg-tertiary px-3 py-2">
                           <Lock className="h-3 w-3 text-text-tertiary" />
                           <code className="flex-1 text-xs text-text-secondary">
-                            {deployment.password}
+                            {deployment.password || "unchanged"}
                           </code>
                           <button
                             onClick={() => copyToClipboard(deployment.password)}

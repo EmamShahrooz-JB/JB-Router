@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { getProviderIconSrc, markProviderIconMissing } from "@/shared/utils/providerIcon";
 
@@ -23,6 +23,14 @@ export default function ProviderIcon({
 }) {
   const effectiveSrc = resolveSrc(src, providerId);
   const [errored, setErrored] = useState(false);
+  const imgRef = useRef(null);
+
+  // A missing icon can finish loading *before* React hydrates, in which case onError never
+  // reaches us and the broken image would stay on screen — so the DOM is checked on mount too.
+  useEffect(() => {
+    const node = imgRef.current;
+    if (node && node.complete && node.naturalWidth === 0) setErrored(true);
+  }, [effectiveSrc]);
 
   if (!effectiveSrc || errored) {
     return (
@@ -42,6 +50,7 @@ export default function ProviderIcon({
 
   return (
     <img
+      ref={imgRef}
       src={effectiveSrc}
       alt={alt}
       width={size}

@@ -5,9 +5,8 @@ import PropTypes from "prop-types";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/utils/cn";
-import { APP_CONFIG, UPDATER_CONFIG } from "@/shared/constants/config";
+import { APP_CONFIG } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import Button from "./Button";
 import { ConfirmModal } from "./Modal";
 import JbRemotePromoModal from "./JbRemotePromoModal";
@@ -46,12 +45,7 @@ export default function Sidebar({ onClose }) {
   const [isDisconnected, setIsDisconnected] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [shutdownCountdown, setShutdownCountdown] = useState(0);
   const [enableTranslator, setEnableTranslator] = useState(false);
-  const { copied, copy } = useCopyToClipboard(2000);
-
-  const INSTALL_CMD = UPDATER_CONFIG.installCmdLatest;
 
   useEffect(() => {
     fetch("/api/settings")
@@ -75,36 +69,12 @@ export default function Sidebar({ onClose }) {
     return pathname.startsWith(href);
   };
 
-  // Open manual update panel (no countdown yet — user must click Copy to trigger shutdown)
+  // One click: open the deployer with this Worker prefilled, in update mode.
   const handleUpdate = () => {
     setShowUpdateModal(false);
-    setIsUpdating(true);
+    const target = updateInfo?.updateUrl || updateInfo?.deployerUrl;
+    if (target) globalThis.open(target, "_blank", "noopener");
   };
-
-  // Triggered by Copy button inside ManualUpdatePanel: copy + countdown + shutdown
-  const handleCopyAndShutdown = async () => {
-    try { await navigator.clipboard.writeText(INSTALL_CMD); } catch { /* clipboard blocked */ }
-    copy(INSTALL_CMD);
-    let remaining = UPDATER_CONFIG.shutdownCountdownSec;
-    setShutdownCountdown(remaining);
-    const timer = setInterval(() => {
-      remaining -= 1;
-      setShutdownCountdown(remaining);
-      if (remaining <= 0) {
-        clearInterval(timer);
-        fetch("/api/version/shutdown", { method: "POST" }).catch(() => {});
-        setIsDisconnected(true);
-      }
-    }, 1000);
-  };
-
-  const handleCancelUpdate = () => {
-    setIsUpdating(false);
-    setShutdownCountdown(0);
-  };
-
-  // Note: legacy updater poll removed. New flow: copy install cmd + shutdown server,
-  // user runs the command manually in another terminal.
 
 
   return (
@@ -142,15 +112,19 @@ export default function Sidebar({ onClose }) {
                 >
                   Update now
                 </button>
-                <button
-                  onClick={() => copy(INSTALL_CMD)}
-                  title="Copy install command"
-                  className="flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer min-w-0"
-                >
-                  <code className="block text-[10px] text-green-600/80 dark:text-amber-400/70 font-mono truncate">
-                    {copied ? "✓ copied!" : INSTALL_CMD}
-                  </code>
-                </button>
+                {updateInfo.releaseUrl ? (
+                  <a
+                    href={updateInfo.releaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Release notes on GitHub"
+                    className="flex-1 text-[10px] text-green-600/80 dark:text-amber-400/70 hover:opacity-80 transition-opacity truncate"
+                  >
+                    What&apos;s new ↗
+                  </a>
+                ) : (
+                  <span className="flex-1 text-[10px] text-text-muted truncate">checked {updateInfo.source === "github" ? "on GitHub" : "with the deployer"}</span>
+                )}
               </div>
             </div>
           )}
@@ -348,38 +322,26 @@ export default function Sidebar({ onClose }) {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update JB-Router"
-        message={`Show install command for v${updateInfo?.latestVersion || ""}? You can copy it and shutdown to install manually.`}
-        confirmText="Show Command"
+        title={`Update JB-Router to v${updateInfo?.latestVersion || ""}`}
+        message="The installer opens with this Worker's name filled in. It replaces the code and the bundled assets and deploys again — your data, provider connections and password stay. Cloudflare accepts an upload only with an authenticated call, so the installer asks for your API token once; it is used in memory for that request and never stored."
+        confirmText="Open installer"
         cancelText="Cancel"
         variant="primary"
       />
 
       {/* Disconnected / Updating Overlay */}
-      {(isDisconnected || isUpdating) && (
+      {isDisconnected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
-          {isUpdating ? (
-            <ManualUpdatePanel
-              latestVersion={updateInfo?.latestVersion}
-              installCmd={INSTALL_CMD}
-              copied={copied}
-              onCopyAndShutdown={handleCopyAndShutdown}
-              onCancel={handleCancelUpdate}
-              countdown={shutdownCountdown}
-              isDisconnected={isDisconnected}
-            />
-          ) : (
-            <div className="text-center p-8">
-              <div className="flex items-center justify-center size-16 rounded-full bg-red-500/20 text-red-500 mx-auto mb-4">
-                <span className="material-symbols-outlined text-[32px]">power_off</span>
-              </div>
-              <h2 className="text-xl font-semibold text-white mb-2">Server Disconnected</h2>
-              <p className="text-text-muted mb-6">The proxy server has been stopped.</p>
-              <Button variant="secondary" onClick={() => globalThis.location.reload()}>
-                Reload Page
-              </Button>
+          <div className="text-center p-8">
+            <div className="flex items-center justify-center size-16 rounded-full bg-red-500/20 text-red-500 mx-auto mb-4">
+              <span className="material-symbols-outlined text-[32px]">power_off</span>
             </div>
-          )}
+            <h2 className="text-xl font-semibold text-white mb-2">Server Disconnected</h2>
+            <p className="text-text-muted mb-6">The proxy server has been stopped.</p>
+            <Button variant="secondary" onClick={() => globalThis.location.reload()}>
+              Reload Page
+            </Button>
+          </div>
         </div>
       )}
     </>
@@ -388,63 +350,4 @@ export default function Sidebar({ onClose }) {
 
 Sidebar.propTypes = {
   onClose: PropTypes.func,
-};
-
-function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected }) {
-  const isCountingDown = countdown > 0;
-  return (
-    <div className="w-full max-w-lg rounded-xl bg-neutral-900/95 border border-white/10 p-6 text-white">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center justify-center size-11 rounded-full bg-amber-500/20 text-amber-400">
-          <span className="material-symbols-outlined text-[24px]">content_copy</span>
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold">Update JB-Router{latestVersion ? ` to v${latestVersion}` : ""}</h2>
-          <p className="text-xs text-white/60">
-            {isDisconnected
-              ? "Server stopped. Paste the command into a terminal to install."
-              : isCountingDown
-                ? `Command copied. Server will stop in ${countdown}s...`
-                : "Click the button below to copy the install command and shutdown."}
-          </p>
-        </div>
-      </div>
-
-      <p className="text-sm text-white/80 mb-2">Install command:</p>
-      <div className="w-full px-3 py-2 rounded bg-white/5 mb-4">
-        <code className="text-xs font-mono text-amber-400 break-all">{installCmd}</code>
-      </div>
-
-      <ol className="text-xs text-white/70 space-y-1 list-decimal list-inside mb-4">
-        <li>Click <strong>Copy & Shutdown</strong> below.</li>
-        <li>Paste the command into your terminal and press Enter.</li>
-        <li>Run <code className="px-1 rounded bg-white/10 text-green-400">jb-router</code> again after install.</li>
-      </ol>
-
-      {isDisconnected ? (
-        <Button variant="secondary" fullWidth onClick={() => globalThis.location.reload()}>
-          Reload Page
-        </Button>
-      ) : (
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onCancel} disabled={isCountingDown}>
-            Cancel
-          </Button>
-          <Button variant="primary" fullWidth onClick={onCopyAndShutdown} disabled={isCountingDown}>
-            {copied ? "✓ Copied — shutting down..." : isCountingDown ? `Shutting down in ${countdown}s` : "Copy & Shutdown"}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-ManualUpdatePanel.propTypes = {
-  latestVersion: PropTypes.string,
-  installCmd: PropTypes.string.isRequired,
-  copied: PropTypes.bool,
-  onCopyAndShutdown: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  countdown: PropTypes.number,
-  isDisconnected: PropTypes.bool,
 };

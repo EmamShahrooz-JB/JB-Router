@@ -295,7 +295,7 @@ AddApiKeyModal.propTypes = {
 
 // ── ConnectionsCard ────────────────────────────────────────────
 // Self-contained card: fetches, displays and manages all connections for a provider.
-export default function ConnectionsCard({ providerId, isOAuth }) {
+export default function ConnectionsCard({ providerId, isOAuth, onOAuthConnect }) {
   const [connections, setConnections] = useState([]);
   const [proxyPools, setProxyPools] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -430,7 +430,11 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
         {connections.length === 0 ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-text-muted">No connections yet</p>
-            <Button size="sm" icon="add" onClick={() => setShowAddModal(true)}>Add Connection</Button>
+            {onOAuthConnect ? (
+              <Button size="sm" icon="lock" onClick={onOAuthConnect}>Connect with OAuth</Button>
+            ) : (
+              <Button size="sm" icon="add" onClick={() => setShowAddModal(true)}>Add Connection</Button>
+            )}
           </div>
         ) : (
           <>
@@ -453,7 +457,11 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
               ))}
             </div>
             <div className="mt-4 flex justify-stretch sm:justify-start">
-              <Button size="sm" icon="add" onClick={() => setShowAddModal(true)}>Add</Button>
+              {onOAuthConnect ? (
+                <Button size="sm" icon="lock" onClick={onOAuthConnect}>Connect with OAuth</Button>
+              ) : (
+                <Button size="sm" icon="add" onClick={() => setShowAddModal(true)}>Add</Button>
+              )}
             </div>
           </>
         )}
@@ -490,4 +498,5 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
 ConnectionsCard.propTypes = {
   providerId: PropTypes.string.isRequired,
   isOAuth: PropTypes.bool,
+  onOAuthConnect: PropTypes.func,
 };

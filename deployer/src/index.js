@@ -16,6 +16,10 @@ const CF = "https://api.cloudflare.com/client/v4";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 
+// Hourly update check (scheduled() in the app's cloudflare-worker.js). Minute 17 keeps the
+// trigger away from the top-of-the-hour spike.
+const UPDATE_CRON = "17 * * * *";
+
 /** Durable Object class of JB-Router; the migration only applies to a fresh install. */
 const MIGRATIONS = { new_tag: "v1-durable-sqlite", steps: [{ new_sqlite_classes: ["RouterDatabase"] }] };
 const MIGRATION_ERROR = /(migration tag|actor migration|10079)/i;
@@ -212,6 +216,17 @@ async function bundleManifest(env, url) {
   });
 }
 
+/** True when the account already runs a Worker under this name (cheap settings lookup). */
+async function scriptExists(token, account, script) {
+  try {
+    await cf(`/accounts/${account}/workers/scripts/${script}/settings`, { token });
+    return true;
+  } catch (error) {
+    if (error && (error.status === 404 || /10007|not found/i.test(String(error.message)))) return false;
+    return false;
+  }
+}
+
 /**
  * Creates the asset upload session from our own manifest and answers with the hashes
  * Cloudflare still wants. Cloudflare's own bucketing is ignored on purpose: the caller
@@ -236,6 +251,13 @@ async function sessionFromBundle(request, env, url) {
 
   // Which pre-built chunks carry the missing assets? Uploading a whole chunk may include a few
   // files Cloudflare no longer asked for — measured against the API, extra parts are accepted.
+  // A re-install onto an existing Worker is also the repair path: the deployment that follows is
+  // built from this brand-new session, so its file map is the full manifest. Cloudflare only asks
+  // for the parts its asset store is still missing, and a completed session hands out the
+  // "session complete" token instead of an upload token — so the parts are only sent when
+  // Cloudflare actually asks for them.
+  const existing = await scriptExists(token, account, script);
+
   const uploads = [];
   let pendingBytes = 0;
   index.chunks.forEach((chunk, i) => {
@@ -248,6 +270,7 @@ async function sessionFromBundle(request, env, url) {
   return json({
     ok: true,
     jwt: result.jwt || null,
+    repair: existing,
     totalFiles: index.files,
     pendingFiles: wanted.size,
     pendingBytes,
@@ -432,7 +455,24 @@ async function deployScript(request, env, url) {
     return json({ ok: false, error: errorText(attempt.data, attempt.res.status) }, 400);
   }
   const result = attempt.data.result || {};
-  return json({ ok: true, id: result.id, etag: result.etag, deploymentId: result.deployment_id, hasAssets: result.has_assets });
+
+  // The hourly update check needs a cron trigger; Cloudflare only accepts it through the
+  // schedules endpoint (a `triggers` field on the script upload is ignored). Failure here must
+  // not fail the install: without it the panel still checks for updates whenever it is open.
+  let scheduleSet = false;
+  try {
+    await cf(`/accounts/${account}/workers/scripts/${script}/schedules`, {
+      token, method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ crons: [UPDATE_CRON] })
+    });
+    scheduleSet = true;
+  } catch (error) {
+    console.log("[schedule] could not set the cron trigger:", error && error.message);
+  }
+
+  return json({
+    ok: true, id: result.id, etag: result.etag, deploymentId: result.deployment_id,
+    hasAssets: result.has_assets, schedule: scheduleSet
+  });
 }
 
 /* ------------------------------------------------------------------ secrets + workers.dev */

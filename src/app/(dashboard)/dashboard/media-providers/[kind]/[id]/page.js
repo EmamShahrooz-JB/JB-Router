@@ -3,9 +3,9 @@
 import { useParams, notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, AddCustomEmbeddingModal, NoAuthProxyCard, ProviderInfoCard } from "@/shared/components";
+import { Card, Badge, Button, AddCustomEmbeddingModal, NoAuthProxyCard, ProviderInfoCard, OAuthModal, ConfirmModal } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, isCustomEmbeddingProvider } from "@/shared/constants/providers";
+import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, APIKEY_PROVIDERS, OAUTH_PROVIDERS, FREE_PROVIDERS, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import ConnectionsCard from "@/app/(dashboard)/dashboard/providers/components/ConnectionsCard";
 import ModelsCard from "@/app/(dashboard)/dashboard/providers/components/ModelsCard";
 import { KIND_EXAMPLE_CONFIG } from "./components/exampleShared";
@@ -34,6 +34,9 @@ export default function MediaProviderDetailPage() {
   const [customNode, setCustomNode] = useState(null);
   const [customLoading, setCustomLoading] = useState(isCustom);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [showRiskModal, setShowRiskModal] = useState(false);
+  const [connectionsVersion, setConnectionsVersion] = useState(0);
 
   // Fetch custom node info from API for custom embedding nodes
   useEffect(() => {
@@ -67,6 +70,30 @@ export default function MediaProviderDetailPage() {
 
   const kinds = isCustom ? ["embedding"] : (provider.serviceKinds ?? ["llm"]);
   if (!isCustom && !kinds.includes(kind)) return notFound();
+
+  // Same rules the Providers page uses: OAuth-only providers (e.g. Antigravity, OpenAI Codex)
+  // cannot be connected with an API key, so the media page must run their OAuth flow instead
+  // of showing the API-key modal — that request would always fail with "Invalid provider".
+  const authModes = builtInProvider?.authModes || [];
+  const isOAuth = !isCustom && (!!OAUTH_PROVIDERS[id] || !!FREE_PROVIDERS[id] || authModes.includes("oauth"));
+  const supportsApiKeyAuth = !isCustom && (!!APIKEY_PROVIDERS[id] || authModes.includes("apikey"));
+  const oauthOnly = isOAuth && !supportsApiKeyAuth;
+  const AG_RISK_STORAGE_KEY = "ag_risk_confirmed";
+
+  const openOAuthFlow = () => {
+    if (id === "antigravity" && typeof window !== "undefined") {
+      if (window.localStorage.getItem(AG_RISK_STORAGE_KEY) !== "true") {
+        setShowRiskModal(true);
+        return;
+      }
+    }
+    setShowOAuthModal(true);
+  };
+
+  const handleOAuthSuccess = () => {
+    setShowOAuthModal(false);
+    setConnectionsVersion((v) => v + 1); // remount the connections card so the new row shows up
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -159,7 +186,12 @@ export default function MediaProviderDetailPage() {
       {!isCustom && provider.noAuth ? (
         <NoAuthProxyCard providerId={id} />
       ) : (
-        <ConnectionsCard providerId={id} isOAuth={false} />
+        <ConnectionsCard
+          key={connectionsVersion}
+          providerId={id}
+          isOAuth={oauthOnly}
+          onOAuthConnect={oauthOnly ? openOAuthFlow : undefined}
+        />
       )}
 
       {/* Models - hidden for tts/webSearch/webFetch (provider IS the model); custom uses prefix as alias */}
@@ -194,6 +226,33 @@ export default function MediaProviderDetailPage() {
       {kind === "tts" && <TtsExampleCard providerId={id} />}
       {kind === "stt" && !isCustom && <SttExampleCard providerId={id} />}
       {!isCustom && KIND_EXAMPLE_CONFIG[kind] && <GenericExampleCard providerId={id} kind={kind} />}
+
+      {/* OAuth flow for OAuth-only providers listed in a media kind */}
+      {oauthOnly && (
+        <OAuthModal
+          isOpen={showOAuthModal}
+          provider={id}
+          providerInfo={builtInProvider}
+          onSuccess={handleOAuthSuccess}
+          onClose={() => setShowOAuthModal(false)}
+        />
+      )}
+
+      {/* Same risk acknowledgement the Providers page asks for Antigravity */}
+      <ConfirmModal
+        isOpen={showRiskModal}
+        onClose={() => setShowRiskModal(false)}
+        onConfirm={() => {
+          if (typeof window !== "undefined") window.localStorage.setItem(AG_RISK_STORAGE_KEY, "true");
+          setShowRiskModal(false);
+          setShowOAuthModal(true);
+        }}
+        title="Risk Notice"
+        message={builtInProvider?.deprecationNotice}
+        confirmText="I Understand, Continue"
+        cancelText="Cancel"
+        variant="danger"
+      />
 
       {isCustom && (
         <AddCustomEmbeddingModal

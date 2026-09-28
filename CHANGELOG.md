@@ -1,3 +1,20 @@
+# v0.5.88 (2026-09-28)
+
+## Changes
+- **Installs can no longer go live half-written.** Verified on every install now:
+  - the asset parts of a session are uploaded one at a time (parallel uploads into one session could silently drop a file),
+  - the install continues only when Cloudflare mints the *session complete* token, and the parts are re-sent if it does not,
+  - a final check asks Cloudflare for a fresh session over the bundle manifest — the only trustworthy completeness signal there is (a fresh deployment answers 404 while it propagates, the page cannot fetch it cross-origin, and Cloudflare refuses Worker→Worker fetches with error 1042) — and anything still missing is uploaded and the Worker deployed again,
+  - re-running the installer on an existing Worker name now rebuilds the deployment from a brand-new, provably complete session, which also repairs an installation that lost assets earlier.
+  - transient Cloudflare hiccups (**503** edge pages, error **10013**, 429) are retried with backoff instead of failing the install.
+- **Media providers**: providers that only support OAuth (Antigravity, OpenAI Codex) now offer **Connect with OAuth** on their card and open the OAuth dialog (Antigravity first shows its risk notice) instead of an API-key form that could only fail.
+- **Provider icons**: a missing icon file is now replaced by the provider monogram even when the 404 happens before React hydrates, and OpenCode Zen reuses the OpenCode artwork.
+- **Updates in the panel**: the dashboard now asks GitHub for the latest release (and the deployer for the build it serves) at most once an hour — on load and from the Worker's hourly cron (`17 * * * *`) — and shows *New version available: vX* in the sidebar with the release notes. **Update now** opens the installer with this Worker's name prefilled; it replaces the code and the bundled assets, keeps the dashboard password, the session secret and every provider, key and setting in the Durable Object, and verifies all 433 files afterwards. No token is stored anywhere: the installer asks for it once, in memory.
+
+## Changes
+- **Deployer reliability**: asset parts are now uploaded into the Cloudflare session one at a time; the install refuses to continue unless Cloudflare mints the "session complete" token, retries transient 10013/5xx answers, and finally verifies every bundled file against the deployed Worker — anything Cloudflare did not publish is re-uploaded and re-deployed automatically, so a panel can no longer go live with a page-404ing chunk
+- **Media providers**: providers that only support OAuth (Antigravity, OpenAI Codex) now show **Connect with OAuth** on their card and open the OAuth dialog (Antigravity first shows its risk notice) instead of a dead API-key form
+
 # v0.5.87 (2026-09-24)
 
 ## Changes
