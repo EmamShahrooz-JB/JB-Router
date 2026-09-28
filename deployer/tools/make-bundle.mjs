@@ -15,7 +15,7 @@
  * talk to it directly anyway). The base64 encoding Cloudflare requires is done here, at build
  * time, so no Worker CPU is spent per install.
  *
- * Run from the repository root:  node deployer/build/make-bundle.mjs [--release vX.Y.Z]
+ * Run from the repository root:  node deployer/tools/make-bundle.mjs [--release vX.Y.Z]
  *
  * The bundled module comes from `wrangler deploy --dry-run`, i.e. exactly the module wrangler
  * would upload. The mime map mirrors what wrangler sends as each asset part's content-type

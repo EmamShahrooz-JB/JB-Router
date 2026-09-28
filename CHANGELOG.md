@@ -1,3 +1,13 @@
+# v0.5.89 (2026-09-28)
+
+## Fixes
+- **Text and multimodal translation:** join text-only message parts without flattening multimodal content; preserve assistant reasoning as a Claude thinking block.
+- **Streaming:** accept raw NDJSON lines in the Ollama parser while keeping SSE parsing on its `data:` path for other formats.
+- **Thinking capabilities:** expose thinking-effort support for GLM-5.2.
+- **Windsurf:** honor account-specific API server URLs for self-serve/Devin credentials.
+- **Combos:** preserve the caller's model array when capability ordering makes no changes.
+- **Verification:** full suite passes — 2,753 passed, 0 failed, 61 skipped across 280 files.
+
 # v0.5.88 (2026-09-28)
 
 ## Changes

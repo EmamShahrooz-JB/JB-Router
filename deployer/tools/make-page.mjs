@@ -3,8 +3,8 @@
  * Builds the deployer *page*: deployer/web (React + Vite + Tailwind v4) → a single
  * self-contained deployer/static/index.html that the jb-deployer Worker serves.
  *
- *   node deployer/build/make-page.mjs            # installs deps on first run
- *   node deployer/build/make-page.mjs --skip-install
+ *   node deployer/tools/make-page.mjs            # installs deps on first run
+ *   node deployer/tools/make-page.mjs --skip-install
  *
  * The page imports deployer/static/pipeline.js, the same module the Node tests use, so the UI
  * and the end-to-end tests can never drift apart.

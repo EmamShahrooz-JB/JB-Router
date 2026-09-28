@@ -3,7 +3,7 @@
  * Vendors the blake3 implementation the deployer page needs (wrangler hashes static assets with
  * blake3, so the browser must compute exactly the same hashes before uploading).
  *
- *   node deployer/build/make-vendor.mjs     # writes deployer/static/vendor/blake3.js
+ *   node deployer/tools/make-vendor.mjs     # writes deployer/static/vendor/blake3.js
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
