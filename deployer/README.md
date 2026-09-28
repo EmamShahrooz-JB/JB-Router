@@ -105,7 +105,7 @@ deployer/
 ```bash
 npm run workers:build                 # produces .open-next/ (the app bundle the deployer ships)
 node deployer/tools/make-vendor.mjs   # static/vendor/blake3.js
-node deployer/tools/make-bundle.mjs --release v0.5.89
+node deployer/tools/make-bundle.mjs --release v0.5.90
 
 cd deployer
 CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… npx wrangler deploy --config wrangler.jsonc

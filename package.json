@@ -1,7 +1,7 @@
 {
   "name": "jb-router-app",
-  "version": "0.5.89",
-  "description": "JB-Router web dashboard \u2014 Cloudflare Workers port of JB-Router",
+  "version": "0.5.90",
+  "description": "JB-Router web dashboard — Cloudflare Workers port of JB-Router",
   "private": true,
   "scripts": {
     "dev": "next dev --port 20127",
@@ -59,7 +59,7 @@
   "optionalDependencies": {
     "better-sqlite3": "^12.6.2"
   },
-  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools \u2014 sql.js is used as fallback at runtime",
+  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools — sql.js is used as fallback at runtime",
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4.1.18",

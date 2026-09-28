@@ -34,6 +34,7 @@ export async function handleImageGeneration(request) {
   const preferredConnectionId = request.headers.get("x-connection-id") || null;
   const wantsStream = (request.headers.get("accept") || "").includes("text/event-stream");
   const binaryOutput = url.searchParams.get("response_format") === "binary";
+  const forceTest = isForceTestRequest(request);
   const modelStr = body.model;
 
   const apiKey = extractApiKey(request);
@@ -57,7 +58,7 @@ export async function handleImageGeneration(request) {
     return handleComboChat({
       body,
       models: comboModels,
-      handleSingleModel: (b, m) => handleSingleModelImage(b, m, { wantsStream, binaryOutput, preferredConnectionId }),
+      handleSingleModel: (b, m) => handleSingleModelImage(b, m, { wantsStream, binaryOutput, preferredConnectionId, forceTest }),
       log,
       comboName: modelStr,
       comboStrategy,
@@ -65,10 +66,10 @@ export async function handleImageGeneration(request) {
     });
   }
 
-  return handleSingleModelImage(body, modelStr, { wantsStream, binaryOutput, preferredConnectionId });
+  return handleSingleModelImage(body, modelStr, { wantsStream, binaryOutput, preferredConnectionId, forceTest });
 }
 
-async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutput, preferredConnectionId } = {}) {
+async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutput, preferredConnectionId, forceTest = false } = {}) {
   const modelInfo = await getModelInfo(modelStr);
   if (!modelInfo.provider) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model format");
 
@@ -94,7 +95,7 @@ async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutpu
   while (true) {
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model, {
       preferredConnectionId,
-      ignoreModelLocks: isForceTestRequest(request),
+      ignoreModelLocks: forceTest,
     });
 
     if (!credentials || credentials.allRateLimited) {

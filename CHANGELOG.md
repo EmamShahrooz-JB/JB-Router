@@ -1,3 +1,9 @@
+# v0.5.90 (2026-09-28)
+
+## Fixes
+- **Image generation:** fix HTTP 500s on credentialed image requests by evaluating the force-test flag at the request boundary and passing it through model/combo routing instead of referencing an out-of-scope request.
+- **Regression coverage:** add request-level tests for ordinary image generation and dashboard image probes.
+
 # v0.5.89 (2026-09-28)
 
 ## Fixes
