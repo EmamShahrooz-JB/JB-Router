@@ -170,6 +170,9 @@ describe("openaiToClaudeRequest", () => {
 
 describe("openaiToClaudeResponse", () => {
   it("omits empty Read pages tool argument before emitting Claude input deltas", () => {
+    // Tool arguments are buffered while streaming and sanitized once, right before
+    // the block is closed (see response/openai-to-claude.js → toolArgBuffers), so the
+    // delta only appears on the finish chunk.
     const state = { toolCalls: new Map() };
     const chunk = {
       id: "chatcmpl-test",
@@ -193,14 +196,23 @@ describe("openaiToClaudeResponse", () => {
       }]
     };
 
-    const result = openaiToClaudeResponse(chunk, state);
+    openaiToClaudeResponse(chunk, state);
+    const result = openaiToClaudeResponse({
+      id: "chatcmpl-test",
+      model: "gpt-test",
+      choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    }, state);
     const inputDelta = result.find(event => event.delta?.type === "input_json_delta");
 
     expect(inputDelta).toBeDefined();
+    // `pages: ""` is invalid for a non-PDF path, so it never reaches the client …
     expect(JSON.parse(inputDelta.delta.partial_json)).toEqual({
       file_path: "/tmp/example.txt",
       offset: 0,
       limit: 120
     });
+    // … and the tool block is closed right after the buffered delta.
+    const stopIndex = result.findIndex(event => event.type === "content_block_stop");
+    expect(stopIndex).toBeGreaterThan(result.indexOf(inputDelta));
   });
 });

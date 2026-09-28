@@ -14,6 +14,21 @@ const CREDS = { connectionId: "opencode-free-tool-choice-test" };
 const INPUT = [{ type: "message", role: "user", content: [{ type: "input_text", text: "hi" }] }];
 const TOOLS = [{ type: "function", name: "get_weather", description: "w", parameters: { type: "object", properties: {} } }];
 
+// Free-tier requests always carry opencode's fingerprint decoys (bash/glob/grep/read)
+// — see open-sse/utils/opencodeFingerprint.js. The caller's own tools must survive
+// untouched next to them, so assert the merge instead of exact-equality.
+const FINGERPRINT_TOOLS = ["bash", "glob", "grep", "read"];
+const expectToolsPreserved = (out) => {
+  expect(Array.isArray(out.tools)).toBe(true);
+  const names = out.tools.map((tool) => tool.name);
+  for (const name of FINGERPRINT_TOOLS) expect(names).toContain(name);
+  for (const tool of TOOLS) {
+    expect(names).toContain(tool.name);
+    expect(out.tools.find((candidate) => candidate.name === tool.name)).toEqual(tool);
+  }
+  expect(out.tools.length).toBe(TOOLS.length + FINGERPRINT_TOOLS.length);
+};
+
 function responsesBody(model, tool_choice) {
   const body = { model, input: structuredClone(INPUT), tools: structuredClone(TOOLS) };
   if (tool_choice !== undefined) body.tool_choice = tool_choice;
@@ -36,24 +51,26 @@ describe("opencode Free 1.3 tool_choice auto-only", () => {
       const body = responsesBody(model, structuredClone(choice));
       const out = new OpenCodeExecutor().transformRequest(model, body, true, CREDS);
       expect(out.tool_choice).toBe("auto");
-      expect(out.tools).toEqual(TOOLS);
+      expectToolsPreserved(out);
       expect(out.input).toEqual(INPUT);
     }
   });
 
-  it("giữ auto và absent; tools/input nguyên vẹn", () => {
+  it("keeps auto, defaults absent to auto; tools/input intact (with fingerprint decoys)", () => {
     const autoOut = new OpenCodeExecutor().transformRequest(
       FREE_13, responsesBody(FREE_13, "auto"), true, CREDS,
     );
     expect(autoOut.tool_choice).toBe("auto");
-    expect(autoOut.tools).toEqual(TOOLS);
+    expectToolsPreserved(autoOut);
     expect(autoOut.input).toEqual(INPUT);
 
     const absentOut = new OpenCodeExecutor().transformRequest(
       FREE_13, responsesBody(FREE_13, undefined), true, CREDS,
     );
-    expect("tool_choice" in absentOut).toBe(false);
-    expect(absentOut.tools).toEqual(TOOLS);
+    // An omitted tool_choice means "auto" for the Responses API anyway, and the
+    // injected fingerprint decoys must stay selectable, so it is written explicitly.
+    expect(absentOut.tool_choice).toBe("auto");
+    expectToolsPreserved(absentOut);
     expect(absentOut.input).toEqual(INPUT);
   });
 
@@ -84,7 +101,7 @@ describe("opencode Free 1.3 tool_choice auto-only", () => {
     const sent = JSON.parse(actualInit.body);
     expect(sent.tool_choice).toBe("auto");
     expect(sent.model).toBe(FREE_13);
-    expect(sent.tools).toEqual(TOOLS);
+    expectToolsPreserved(sent);
     expect(sent.input).toEqual(INPUT);
   });
 });

@@ -116,12 +116,25 @@ describe("commandcode-to-openai — finish", () => {
 });
 
 describe("commandcode-to-openai — error event", () => {
-  it("stringifies object errors so client sees readable message", () => {
-    const { chunks } = feed([
-      { type: "error", error: { type: "server_error", message: "Boom" } },
-    ]);
-    const text = chunks[0].choices[0].delta.content;
-    expect(text).toContain("Boom");
-    expect(text).not.toContain("[object Object]");
+  // A mid-stream error is deliberately surfaced by throwing: the downstream stream
+  // handler then marks the stream errored instead of passing the failure off as
+  // assistant content. The message still has to be readable (not "[object Object]").
+  it("throws a readable error for object error payloads", () => {
+    const state = {};
+    expect(() => commandCodeToOpenAIResponse(
+      JSON.stringify({ type: "error", error: { type: "server_error", message: "Boom" } }),
+      state,
+    )).toThrow(/Boom/);
+
+    let message = "";
+    try {
+      commandCodeToOpenAIResponse(
+        JSON.stringify({ type: "error", error: { type: "server_error", message: "Boom" } }),
+        state,
+      );
+    } catch (error) {
+      message = error.message;
+    }
+    expect(message).not.toContain("[object Object]");
   });
 });

@@ -35,11 +35,16 @@ describe("detectRequiredCapabilities", () => {
     expect(r.has("vision")).toBe(true);
   });
 
-  it("web_search tool -> search", () => {
+  // Search-based auto-switch is deliberately not wired yet (see combo.js:
+  // "search: temporarily disabled in auto-switch"), so a web_search tool must NOT
+  // drag the combo onto a search-capable model. Flip this expectation when the
+  // feature lands.
+  it("web_search tool does not request search while the feature is disabled", () => {
     const r = detectRequiredCapabilities({ messages: [{ role: "user", content: "q" }], tools: [
       { type: "web_search" },
     ] });
-    expect(r.has("search")).toBe(true);
+    expect(r.has("search")).toBe(false);
+    expect(r.size).toBe(0);
   });
 
   it("responses input_image -> vision", () => {

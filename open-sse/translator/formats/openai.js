@@ -53,7 +53,13 @@ export function filterToOpenAIFormat(body, opts = {}) {
       if (filteredContent.length === 0) {
         filteredContent.push({ type: OPENAI_BLOCK.TEXT, text: "" });
       }
-      
+
+      // Text-only arrays collapse to a newline-joined string: several
+      // OpenAI-compatible providers reject multi-part text content.
+      if (filteredContent.length > 1 && filteredContent.every((b) => b.type === OPENAI_BLOCK.TEXT)) {
+        return { ...msg, content: filteredContent.map((b) => b.text || "").join("\n") };
+      }
+
       return { ...msg, content: filteredContent };
     }
     

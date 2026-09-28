@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CLAUDE_CLI_VERSION } from "../../open-sse/providers/shared.js";
 
 // ─── DefaultExecutor.buildHeaders() ──────────────────────────────────────────
 
@@ -29,7 +30,8 @@ describe("DefaultExecutor.buildHeaders() — claude provider", () => {
       headers["Anthropic-Version"] === "2023-06-01" ||
       headers["anthropic-version"] === "2023-06-01";
     expect(hasVersion).toBe(true);
-    expect(headers["User-Agent"]).toBe("claude-cli/2.1.258 (external, sdk-cli)");
+    // Version comes from the shared constant — assert the shape, not a frozen build.
+    expect(headers["User-Agent"]).toBe(`claude-cli/${CLAUDE_CLI_VERSION} (external, sdk-cli)`);
   });
 
   it("includes heavy-agent beta flags for claude-opus-5", () => {
@@ -236,35 +238,40 @@ describe("proxyAwareFetch — api.anthropic.com routing", () => {
     vi.restoreAllMocks();
   });
 
-  it("routes api.anthropic.com to gotScraping (non-streaming) and returns ok response", async () => {
-    // Mock got-scraping before module load
-    vi.doMock("got-scraping", () => {
-      const mockGotScraping = vi.fn().mockResolvedValue({
-        statusCode: 200,
-        statusMessage: "OK",
-        headers: { "content-type": "application/json" },
-        rawBody: Buffer.from(JSON.stringify({ id: "msg_test" })),
-      });
-      mockGotScraping.stream = vi.fn();
-      return { gotScraping: mockGotScraping };
+  it("sends api.anthropic.com through native fetch (TLS impersonation is disabled)", async () => {
+    // got-scraping is a Node-only JA3 impersonator and is switched off in this
+    // build ("got-scraping disabled — use native fetch directly"), so the request
+    // must reach the platform fetch untouched and still return a usable response.
+    const gotScrapingMock = vi.fn();
+    vi.doMock("got-scraping", () => ({ gotScraping: gotScrapingMock }));
+
+    const originalFetch = globalThis.fetch;
+    const nativeFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: new Headers({ "content-type": "application/json" }),
+      body: null,
+      text: async () => JSON.stringify({ id: "msg_test" }),
+      json: async () => ({ id: "msg_test" }),
     });
+    globalThis.fetch = nativeFetch;
 
     vi.resetModules();
     const { proxyAwareFetch } = await import("open-sse/utils/proxyFetch.js");
-    const { gotScraping } = await import("got-scraping");
 
     const res = await proxyAwareFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      // No Accept: text/event-stream → non-streaming path
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", messages: [] }),
     });
 
-    expect(gotScraping).toHaveBeenCalledOnce();
+    expect(gotScrapingMock).not.toHaveBeenCalled();
     expect(res.ok).toBe(true);
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.id).toBe("msg_test");
+    globalThis.fetch = originalFetch;
   });
 
   it("falls back gracefully when got-scraping throws on non-streaming path", async () => {

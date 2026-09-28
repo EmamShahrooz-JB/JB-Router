@@ -375,8 +375,14 @@ export class WindsurfExecutor extends BaseExecutor {
     super("windsurf", PROVIDERS.windsurf || { id: "windsurf", baseUrl: WS_CHAT_URL });
   }
 
-  buildUrl() {
-    return WS_CHAT_URL;
+  // Self-serve (Devin auth1_…) accounts are served by server.self-serve.windsurf.com;
+  // the OAuth/import flow records the host it registered against in
+  // providerSpecificData.apiServerUrl, so honour it and fall back to the classic
+  // Codeium host for sk-ws-… API keys.
+  buildUrl(credentials) {
+    const registered = credentials?.providerSpecificData?.apiServerUrl?.trim();
+    if (!registered) return WS_CHAT_URL;
+    return `${registered.replace(/\/$/, "")}/${WS_SERVICE}/${WS_METHOD_CHAT}`;
   }
 
   buildHeaders(credentials, stream = true) {
@@ -410,7 +416,7 @@ export class WindsurfExecutor extends BaseExecutor {
     const protoPayload = buildGetChatMessageRequest(apiKey, wsModel, wsMessages);
     const framedPayload = grpcWebFrame(protoPayload);
 
-    const url = this.buildUrl();
+    const url = this.buildUrl(credentials);
     const headers = this.buildHeaders(credentials);
     if (upstreamExtraHeaders) Object.assign(headers, upstreamExtraHeaders);
 

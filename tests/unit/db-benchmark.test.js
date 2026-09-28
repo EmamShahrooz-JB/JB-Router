@@ -5,6 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, beforeAll, afterAll, vi } from "vitest";
 
+// The comparison baseline is lowdb, which is not a dependency of this repo (the
+// SQLite driver replaced it). The benchmark therefore only runs when lowdb is
+// installed locally (`npm i -D lowdb`); otherwise it reports itself as skipped
+// instead of failing the suite.
+const hasLowdb = await import("lowdb").then(() => true).catch(() => false);
+
 const N_ITEMS = 500;
 const N_QUERIES = 200;
 
@@ -25,6 +31,7 @@ async function bench(label, fn) {
 }
 
 beforeAll(async () => {
+  if (!hasLowdb) return;
   // SQLite setup
   tempSqlite = fs.mkdtempSync(path.join(os.tmpdir(), "jb-router-bench-sqlite-"));
   process.env.DATA_DIR = tempSqlite;
@@ -49,7 +56,7 @@ afterAll(() => {
   else process.env.DATA_DIR = originalDataDir;
 });
 
-describe("DB Benchmark — SQLite vs Lowdb", () => {
+describe.skipIf(!hasLowdb)("DB Benchmark — SQLite vs Lowdb", () => {
   it(`INSERT ${N_ITEMS} provider connections`, async () => {
     console.log(`\n[INSERT ${N_ITEMS}]`);
 

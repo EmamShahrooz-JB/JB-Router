@@ -7,6 +7,7 @@ import {
   default as WindsurfExecutor,
 } from "open-sse/executors/windsurf.js";
 import { PROVIDERS } from "open-sse/config/providers.js";
+import WINDSURF_REGISTRY from "open-sse/providers/registry/windsurf.js";
 
 // ─── Protobuf helpers for building expected wire bytes in tests ──────────────
 
@@ -161,11 +162,11 @@ describe("decodeCompletionChunk", () => {
 });
 
 describe("WindsurfExecutor class", () => {
-  it("constructor wires config from PROVIDERS.windsurf", () => {
+  it("constructor wires its own config (windsurf is not in the PROVIDERS map)", () => {
     const ex = new WindsurfExecutor();
     expect(ex.provider).toBe("windsurf");
     expect(ex.config).toBeDefined();
-    expect(ex.config.baseUrl).toContain("server.self-serve.windsurf.com");
+    expect(ex.config.baseUrl).toContain("server.codeium.com");
     expect(typeof ex.execute).toBe("function");
   });
 
@@ -187,12 +188,30 @@ describe("WindsurfExecutor class", () => {
 
   it("buildUrl returns the GetChatMessage endpoint", () => {
     const ex = new WindsurfExecutor();
-    expect(ex.buildUrl()).toBe("https://server.self-serve.windsurf.com/exa.language_server_pb.LanguageServerService/GetChatMessage");
+    expect(ex.buildUrl()).toBe(
+      "https://server.codeium.com/exa.language_server_pb.LanguageServerService/GetChatMessage"
+    );
   });
 
-  it("PROVIDERS.windsurf baseUrl is the chat endpoint (registry in sync)", () => {
-    expect(PROVIDERS.windsurf.baseUrl).toBe(
-      "https://server.self-serve.windsurf.com/exa.language_server_pb.LanguageServerService/GetChatMessage"
+  it("buildUrl honours the host the connection registered against (self-serve accounts)", () => {
+    const ex = new WindsurfExecutor();
+    expect(
+      ex.buildUrl({ providerSpecificData: { apiServerUrl: "https://server.self-serve.windsurf.com" } })
+    ).toBe("https://server.self-serve.windsurf.com/exa.language_server_pb.LanguageServerService/GetChatMessage");
+    // A trailing slash is tolerated.
+    expect(
+      ex.buildUrl({ providerSpecificData: { apiServerUrl: "https://server.self-serve.windsurf.com/" } })
+    ).toBe("https://server.self-serve.windsurf.com/exa.language_server_pb.LanguageServerService/GetChatMessage");
+  });
+
+  it("default chat endpoint stays in sync with the registry transport (windsurf is hidden on purpose)", () => {
+    // The provider entry is deliberately commented out of PROVIDERS (its gRPC stream
+    // skips ToolCallChunk), so the executor falls back to its own config — the URL it
+    // uses must still match the registry entry it was built from.
+    expect(PROVIDERS.windsurf).toBeUndefined();
+    expect(WINDSURF_REGISTRY.transport.baseUrl).toBe(
+      "https://server.codeium.com/exa.language_server_pb.LanguageServerService/GetChatMessage"
     );
+    expect(new WindsurfExecutor().buildUrl()).toBe(WINDSURF_REGISTRY.transport.baseUrl);
   });
 });

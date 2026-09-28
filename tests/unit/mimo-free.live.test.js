@@ -2,7 +2,15 @@
  * Live repro for issue #1933: MiMo Code Free returns HTTP 502 "MiMo bootstrap failed: 403".
  * Root cause: upstream gates on Chrome-like User-Agent. Without UA → 403 "Illegal access".
  * Hits real endpoints — no mocks. Free provider, safe to call.
+ *
+ * Network tests only run with RUN_REAL=1 (same switch as tests/translator/real), so a
+ * plain `npm test` stays deterministic and offline. Run them explicitly with:
+ *   RUN_REAL=1 npx vitest run unit/mimo-free.live.test.js
+ * Known upstream drift (2026-09): the chat call now answers 400 for the probe payload
+ * even with the Chrome UA, while /bootstrap still returns 200 — re-probe before
+ * treating a red live test as a regression in jb-router.
  */
+const RUN_REAL = process.env.RUN_REAL === "1";
 import { describe, it, expect } from "vitest";
 import { proxyAwareFetch } from "../../open-sse/utils/proxyFetch.js";
 import { __test__ } from "../../open-sse/executors/mimo-free.js";
@@ -43,7 +51,7 @@ async function chatWith(jwt, ua) {
   return proxyAwareFetch(CHAT_URL, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-describe("MiMo Free bootstrap (live)", () => {
+describe.skipIf(!RUN_REAL)("MiMo Free bootstrap (live)", () => {
   it("bootstrap returns 200 with JWT", async () => {
     const { status, jwt } = await bootstrapWith(CHROME_UA);
     expect(status).toBe(200);
@@ -51,7 +59,7 @@ describe("MiMo Free bootstrap (live)", () => {
   });
 });
 
-describe("MiMo Free anti-abuse gate (live)", () => {
+describe.skipIf(!RUN_REAL)("MiMo Free anti-abuse gate (live)", () => {
   it("chat WITH Chrome User-Agent → 200", async () => {
     const { jwt } = await bootstrapWith(CHROME_UA);
     const r = await chatWith(jwt, CHROME_UA);

@@ -11,7 +11,17 @@ import { openaiToKiroRequest } from "../../open-sse/translator/request/openai-to
 
 const contentOf = (result) =>
   result.conversationState.currentMessage.userInputMessage.content;
-const systemPromptOf = (result) => result.systemPrompt || "";
+// The CodeWhisperer surface rejects a top-level `systemPrompt` with 400
+// REQUEST_BODY_INVALID, so openaiToKiroRequest() returns `systemPrompt` only as a
+// replay-cache key and transmits the prompt (thinking tags / agentic preamble)
+// inside the first user turn's content, ahead of the "[Context: Current time …]"
+// marker. These helpers read the prompt as it actually goes on the wire.
+const promptPrefixOf = (result) => {
+  const content = result?.conversationState?.currentMessage?.userInputMessage?.content || "";
+  const transmitted = String(content).split("[Context: Current time is ")[0];
+  return [result?.systemPrompt, transmitted].filter(Boolean).join("\n").trim();
+};
+const systemPromptOf = promptPrefixOf;
 
 describe("openaiToKiroRequest", () => {
   describe("basic message conversion", () => {
@@ -568,7 +578,7 @@ describe("openaiToKiroRequest", () => {
       expect(systemPromptOf(result)).toContain("<max_thinking_length>16000</max_thinking_length>");
     });
 
-    it("keeps top-level systemPrompt stable across turns", () => {
+    it("keeps the transmitted prompt prefix stable across turns", () => {
       const first = openaiToKiroRequest(
         "claude-sonnet-4.6-thinking",
         { messages: [{ role: "user", content: "first" }] },
@@ -582,8 +592,10 @@ describe("openaiToKiroRequest", () => {
         {}
       );
 
-      expect(first.systemPrompt).toBe(second.systemPrompt);
-      expect(first.systemPrompt).not.toContain("Current time");
+      // Same prompt on both turns …
+      expect(promptPrefixOf(first)).toBe(promptPrefixOf(second));
+      // … and the volatile timestamp stays out of it (content-only suffix).
+      expect(promptPrefixOf(first)).not.toContain("Current time");
       expect(first.conversationState.currentMessage.userInputMessage.content).toContain("Current time");
     });
 

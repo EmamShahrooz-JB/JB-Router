@@ -253,6 +253,16 @@ function getContentBlocksFromMessage(msg, toolNameMap = new Map()) {
       }
     }
   } else if (msg.role === ROLE.ASSISTANT) {
+    // Replayed hidden reasoning (reasoning_content / reasoning / thought, sent by
+    // DeepSeek/Kimi/GLM-style clients) becomes a thinking block instead of being
+    // dropped. formats/claude.js afterwards signs it for anthropic-compatible
+    // endpoints and drops unsigned blocks for native Anthropic.
+    const replayedReasoning = [msg.reasoning_content, msg.reasoning, msg.thought]
+      .find((value) => typeof value === "string" && value.trim());
+    if (replayedReasoning) {
+      blocks.push({ type: CLAUDE_BLOCK.THINKING, thinking: replayedReasoning });
+    }
+
     if (Array.isArray(msg.content)) {
       for (const part of msg.content) {
         if (part.type === OPENAI_BLOCK.TEXT && part.text) {

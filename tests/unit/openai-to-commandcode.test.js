@@ -184,7 +184,7 @@ describe("openaiToCommandCodeRequest — native image blocks", () => {
   const PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   const DATA_URI = `data:image/png;base64,${PNG_B64}`;
 
-  it("maps OpenAI image_url data URI to CommandCode {type:image,image,mimeType}", () => {
+  it("maps OpenAI image_url data URI to CommandCode {type:image,image,mimeType/mediaType}", () => {
     const out = openaiToCommandCodeRequest(MODEL, {
       messages: [{
         role: "user",
@@ -197,10 +197,12 @@ describe("openaiToCommandCodeRequest — native image blocks", () => {
 
     expect(out.params.messages[0].content).toEqual([
       { type: "text", text: "what color?" },
-      { type: "image", image: DATA_URI, mimeType: "image/png" },
+      { type: "image", image: DATA_URI, mimeType: "image/png", mediaType: "image/png" },
     ]);
   });
 
+  // The upstream schema grew a second spelling for the mime field, so the translator
+  // emits mimeType *and* mediaType (same value) and both are asserted here.
   it("maps Claude/OpenAI base64 image source to a data-URI image block", () => {
     const out = openaiToCommandCodeRequest(MODEL, {
       messages: [{
@@ -212,7 +214,7 @@ describe("openaiToCommandCodeRequest — native image blocks", () => {
     }, true);
 
     expect(out.params.messages[0].content).toEqual([
-      { type: "image", image: DATA_URI, mimeType: "image/png" },
+      { type: "image", image: DATA_URI, mimeType: "image/png", mediaType: "image/png" },
     ]);
   });
 

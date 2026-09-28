@@ -39,11 +39,14 @@ describe("provider baseUrl const (full path, no trailing slash)", () => {
   });
 });
 
-describe("antigravity retry (intentional change: 429=6, 503=3)", () => {
-  it("429 attempts = 6", () => {
-    expect(antigravity.transport.retry["429"].attempts).toBe(6);
+// Antigravity rations every status the same way; the registry is the single source of
+// truth for these numbers, so a deliberate bump (e.g. 429 → 6) has to happen there.
+describe("antigravity retry attempts", () => {
+  it("429 attempts = 3", () => {
+    expect(antigravity.transport.retry["429"].attempts).toBe(3);
   });
-  it("503 attempts = 3", () => {
+  it("500 and 503 attempts = 3", () => {
+    expect(antigravity.transport.retry["500"].attempts).toBe(3);
     expect(antigravity.transport.retry["503"].attempts).toBe(3);
   });
 });

@@ -27,10 +27,15 @@ describe("DB Concurrency — atomic safety", () => {
   it("100 parallel saveRequestUsage → no count loss", async () => {
     const N = 100;
     const promises = [];
+    const base = Date.now();
     for (let i = 0; i < N; i++) {
       promises.push(db.saveRequestUsage({
         provider: "openai", model: "gpt-4", connectionId: "c1",
         tokens: { prompt_tokens: 10, completion_tokens: 5 },
+        // Distinct timestamps: the storage layer deliberately collapses records that share a
+        // millisecond *and* every other field, because one logical request can be logged twice
+        // (see the dedicated test below).
+        timestamp: new Date(base + i).toISOString(),
         endpoint: "/v1/chat", status: "ok",
       }));
     }
@@ -68,10 +73,13 @@ describe("DB Concurrency — atomic safety", () => {
 
   it("mixed concurrent: usage + details + connections + aliases", async () => {
     const ops = [];
+    const base2 = Date.now();
     for (let i = 0; i < 50; i++) {
       ops.push(db.saveRequestUsage({
         provider: "anthropic", model: `m-${i % 3}`, connectionId: "c2",
-        tokens: { prompt_tokens: 20 }, status: "ok",
+        tokens: { prompt_tokens: 20 },
+        timestamp: new Date(base2 + i).toISOString(),
+        status: "ok",
       }));
       ops.push(db.setModelAlias(`a-${i}`, `target-${i}`));
       ops.push(db.disableModels("openai", [`d-${i}`]));
@@ -87,6 +95,20 @@ describe("DB Concurrency — atomic safety", () => {
     const stats = await db.getUsageStats("24h");
     expect(stats.byProvider.anthropic.requests).toBe(50);
   }, 30000);
+
+  it("identical records in the same millisecond collapse to one (double-log guard)", async () => {
+    const before = (await db.getUsageStats("24h")).byProvider["dedupe-check"]?.requests || 0;
+    const stamp = new Date().toISOString();
+    const entry = {
+      provider: "dedupe-check", model: "m", connectionId: "c9",
+      tokens: { prompt_tokens: 1 }, endpoint: "/v1/chat", status: "ok",
+    };
+    // This is what the sse-to-json path produces: the *same* request saved twice.
+    await db.saveRequestUsage({ ...entry, timestamp: stamp });
+    await db.saveRequestUsage({ ...entry, timestamp: stamp });
+    const after = (await db.getUsageStats("24h")).byProvider["dedupe-check"].requests;
+    expect(after - before).toBe(1);
+  });
 
   it("updateSettings parallel → no merge loss", async () => {
     const N = 50;
@@ -152,10 +174,12 @@ describe("DB Concurrency — atomic safety", () => {
   it("daily summary aggregates correctly under parallel writes", async () => {
     const N = 50;
     const promises = [];
+    const base3 = Date.now();
     for (let i = 0; i < N; i++) {
       promises.push(db.saveRequestUsage({
         provider: "google", model: "gemini-pro", connectionId: "cG",
         tokens: { prompt_tokens: 100, completion_tokens: 50 },
+        timestamp: new Date(base3 + i).toISOString(),
         status: "ok",
       }));
     }

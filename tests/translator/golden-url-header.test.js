@@ -31,6 +31,10 @@ function sanitize(headers) {
       ? v.replace(/Bearer .+/, "Bearer <TOK>")
           .replace(/sk-test-APIKEY|tok-test-ACCESS/g, "<CRED>")
           .replace(/kimi-\d{10,}/g, "kimi-<TS>")
+          // The client advertises the app version; that is not part of the contract this
+          // golden locks, and a version bump must not fail every provider snapshot.
+          .replace(/JB-Router\/\d+\.\d+\.\d+/g, "JB-Router/<VER>")
+          .replace(/^\d+\.\d+\.\d+$/, "<VER>")
       : v;
   }
   return out;

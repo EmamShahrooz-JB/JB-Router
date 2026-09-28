@@ -75,10 +75,12 @@ export function reorderByCapabilities(models, required) {
   };
 
   // Stable sort by tier (Array.prototype.sort is stable in modern engines).
-  return models
+  const ordered = models
     .map((m, i) => ({ m, i, t: tierOf(m) }))
     .sort((a, b) => a.t - b.t || a.i - b.i)
     .map((x) => x.m);
+  // Nothing moved → hand back the caller's own array (no change, no copy).
+  return ordered.every((m, i) => m === models[i]) ? models : ordered;
 }
 
 /**
