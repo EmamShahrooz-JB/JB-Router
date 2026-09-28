@@ -170,7 +170,7 @@ Runtime variables are set through Wrangler (`vars` in `wrangler.jsonc` or
 
 | | |
 | --- | --- |
-| **Deploy-ready build** | [`v0.5.90`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.90) — `jb-router-v0.5.90-opennext-bundle.zip` (unzip and `wrangler deploy`) |
+| **Deploy-ready build** | [`v0.5.89`](https://github.com/EmamShahrooz-JB/JB-Router/releases/tag/v0.5.89) — `jb-router-v0.5.89-opennext-bundle.zip` (unzip and `wrangler deploy`) |
 | **CLI** | `cli/` is published as the [`jb-router-cli`](https://www.npmjs.com/package/jb-router-cli) npm package (bin: `jb-router`). Publishing runs from the *Publish CLI to npm* workflow with an `NPM_TOKEN` secret, because the CLI embeds a full production build |
 | **Web deployer** | [`deployer/`](./deployer) — the `jb-deployer` Worker that installs JB-Router on any account from the browser (live: <https://jb-deployer.jb-router.workers.dev>) |
 | **Updates** | An installed panel checks GitHub hourly for a newer release and offers it in the sidebar: one click opens the deployer with that Worker's name prefilled, replaces the code and assets, and keeps your data, providers and dashboard password |
