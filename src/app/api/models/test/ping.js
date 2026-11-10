@@ -44,7 +44,7 @@ function createSilentWavFile() {
 export async function getInternalHeaders() {
   let apiKey = null;
   try {
-    const keys = await getApiKeys();
+    const keys = await getApiKeys({ withSecret: true });
     apiKey = keys.find((k) => k.isActive !== false)?.key || null;
   } catch {}
 

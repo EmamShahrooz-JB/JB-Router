@@ -213,3 +213,76 @@ export async function fetchPublic(url, init = {}, { maxRedirects = 5 } = {}) {
     currentUrl = nextUrl;
   }
 }
+
+// ── Metadata-only guard ─────────────────────────────────────────────────────
+// Provider/relay URL validation legitimately points at loopback or LAN hosts
+// (LM Studio, Ollama, a company gateway), so the strict `assertPublicUrl*`
+// family cannot be used there without breaking the product. What is never
+// legitimate — and is the actual SSRF payoff — is reaching a cloud metadata
+// endpoint, which hands out instance credentials. This guard blocks exactly
+// that: link-local IPv4 (169.254.0.0/16, including 169.254.169.254), the
+// Alibaba/Google metadata specials, and their IPv6 equivalents.
+const METADATA_V4 = [
+  [ipv4ToInt("169.254.0.0"), 16],
+  [ipv4ToInt("100.100.100.200"), 32], // Alibaba Cloud metadata
+];
+const METADATA_HOSTNAMES = new Set([
+  "metadata",
+  "metadata.google.internal",
+  "metadata.goog",
+  "instance-data",
+  "instance-data.ec2.internal",
+]);
+
+function isMetadataIpv4(host) {
+  const ip = ipv4ToInt(host);
+  if (ip === null) return false;
+  return METADATA_V4.some(([base, bits]) => {
+    const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+    return (ip & mask) === (base & mask);
+  });
+}
+
+function isMetadataIpv6Groups(g) {
+  if (!g || g.length !== 8) return false;
+  // fe80::/10 link-local
+  if ((g[0] & 0xffc0) === 0xfe80) return true;
+  // fd00:ec2::254 (AWS IMDS over IPv6)
+  if (g[0] === 0xfd00 && g[1] === 0x0ec2 && [2, 3, 4, 5, 6].every((i) => g[i] === 0) && g[7] === 0x254) return true;
+  // IPv4-mapped forms of 169.254.x.x / 100.100.100.200
+  const low32 = ((g[6] << 16) | g[7]) >>> 0;
+  if ([0, 1, 2, 3, 4].every((i) => g[i] === 0) && g[5] === 0xffff) {
+    const dotted = `${(low32 >>> 24) & 255}.${(low32 >>> 16) & 255}.${(low32 >>> 8) & 255}.${low32 & 255}`;
+    return isMetadataIpv4(dotted);
+  }
+  return false;
+}
+
+export function assertNotMetadataUrl(rawUrl) {
+  const parsed = new URL(rawUrl);
+  const host = normalizeHost(parsed.hostname);
+  if (METADATA_HOSTNAMES.has(host)) throw new Error("Blocked URL: cloud metadata endpoint");
+  const bracketless = host.replace(/^\[|\]$/g, "");
+  if (isMetadataIpv4(bracketless)) throw new Error("Blocked URL: cloud metadata endpoint");
+  if (bracketless.includes(":") && isMetadataIpv6Groups(parseIPv6ToGroups(bracketless))) {
+    throw new Error("Blocked URL: cloud metadata endpoint");
+  }
+}
+
+export async function assertNotMetadataUrlResolved(rawUrl) {
+  assertNotMetadataUrl(rawUrl);
+  const parsed = new URL(rawUrl);
+  const host = normalizeHost(parsed.hostname);
+  const bracketless = host.replace(/^\[|\]$/g, "");
+  if (ipv4ToInt(bracketless) !== null || bracketless.includes(":")) return;
+  try {
+    const addresses = await dns.promises.lookup(host, { all: true, verbatim: true });
+    for (const { address, family } of addresses) {
+      if (family === 4 ? isMetadataIpv4(address) : isMetadataIpv6Groups(parseIPv6ToGroups(address))) {
+        throw new Error("Blocked URL: cloud metadata endpoint");
+      }
+    }
+  } catch (err) {
+    if (err?.message?.startsWith("Blocked URL")) throw err;
+  }
+}

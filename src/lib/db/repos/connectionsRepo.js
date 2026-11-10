@@ -95,8 +95,10 @@ export async function getProviderConnections(filter = {}) {
   const params = [];
   if (filter.provider) { where.push("provider = ?"); params.push(filter.provider); }
   if (filter.isActive !== undefined) { where.push("isActive = ?"); params.push(filter.isActive ? 1 : 0); }
-  const sql = `SELECT * FROM providerConnections${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
+  const sql = `SELECT * FROM providerConnections${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY COALESCE(priority, 999) ASC`;
   const rows = db.all(sql, params);
+  // SQLite already ordered these; the JS sort is only a tie-breaker for
+  // adapters that ignore ORDER BY on a JSON-encoded column.
   const list = rows.map(rowToConn);
   list.sort((a, b) => (a.priority || 999) - (b.priority || 999));
   return list;

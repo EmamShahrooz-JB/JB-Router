@@ -1,0 +1,63 @@
+name: CI
+
+# Quality gate. Before this workflow existed the repository had no automated
+# check at all: lint findings, test regressions and broken builds could only be
+# caught by hand. Both guards are *regression* based (see scripts/ci/*) because
+# the repo carries a known backlog.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (no new findings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      - name: ESLint regression guard
+        run: node scripts/ci/lint-guard.mjs
+
+  test:
+    name: Unit tests (no regressions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm install --no-audit --no-fund
+      - name: Vitest regression guard
+        run: node scripts/ci/test-guard.mjs
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      - name: Next.js build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

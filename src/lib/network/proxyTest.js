@@ -1,4 +1,5 @@
 import { ProxyAgent, fetch as undiciFetch } from "undici";
+import { assertNotMetadataUrlResolved } from "@/shared/utils/ssrfGuard.js";
 
 const DEFAULT_TEST_URL = "https://google.com/";
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -56,7 +57,8 @@ export async function testProxyUrl({ proxyUrl, testUrl, timeoutMs } = {}) {
     const timer = setTimeout(() => controller.abort(), normalizedTimeoutMs);
 
     try {
-      const res = await undiciFetch(normalizedTestUrl, {
+      await assertNotMetadataUrlResolved(normalizedTestUrl);
+  const res = await undiciFetch(normalizedTestUrl, {
         method: "HEAD",
         dispatcher,
         signal: controller.signal,

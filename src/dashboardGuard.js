@@ -3,6 +3,8 @@ import { getSettings, validateApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 import { hasTrustedPeerHeaders } from "@/lib/auth/trustedPeer";
+import { consumeRateLimit, resolveRateLimitConfig } from "@/lib/rateLimit";
+import { apiKeyFingerprint } from "@/shared/utils/apiKeyFingerprint.js";
 
 const CLI_TOKEN_HEADER = "x-jb-router-cli-token";
 const CLI_TOKEN_SALT = "jb-router-cli-auth";
@@ -152,6 +154,28 @@ async function hasValidApiKey(request) {
   return await validateApiKey(apiKey);
 }
 
+/**
+ * Per-key / per-IP throttle for the LLM surface. Bucketed on the API key
+ * fingerprint when the client sent one (so one shared NAT can't starve every
+ * other user behind it), otherwise on the trusted peer address.
+ */
+function enforceLlmRateLimit(request, settings) {
+  const config = resolveRateLimitConfig(settings);
+  if (!config.enabled) return null;
+  const apiKey = extractApiKey(request);
+  const fingerprint = apiKeyFingerprint(apiKey);
+  const peer = hasTrustedPeerHeaders(request)
+    ? request.headers.get("x-jb-router-real-ip") || "unknown"
+    : "unknown";
+  const bucketKey = fingerprint ? `key:${fingerprint}` : `ip:${peer}`;
+  const result = consumeRateLimit(bucketKey, config);
+  if (result.allowed) return null;
+  return NextResponse.json(
+    { error: "Rate limit exceeded", retryAfter: result.retryAfter, limitPerMinute: result.limit },
+    { status: 429, headers: { "Retry-After": String(result.retryAfter) } }
+  );
+}
+
 async function canAccessPublicLlmApi(request) {
   if (isLocalRequest(request)) return true;
   if (await hasValidCliToken(request)) return true;
@@ -220,7 +244,11 @@ export async function proxy(request) {
   }
 
   if (isPublicLlmApi(pathname)) {
-    if (await canAccessPublicLlmApi(request)) return NextResponse.next();
+    if (await canAccessPublicLlmApi(request)) {
+      const limited = enforceLlmRateLimit(request, await loadSettings());
+      if (limited) return limited;
+      return NextResponse.next();
+    }
     return NextResponse.json({ error: "API key required for remote API access" }, { status: 401 });
   }
 

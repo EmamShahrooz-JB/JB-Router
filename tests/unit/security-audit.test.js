@@ -23,8 +23,11 @@ describe("AUDIT-002: API key masking", () => {
       path.resolve(rootDir, "src/lib/db/repos/usageRepo.js"),
       "utf-8"
     );
-    // The REST response should use apiKeyMasked
-    expect(source).toContain("apiKeyMasked: maskApiKey(r.apiKey)");
+    // The REST response must expose a masked/normalised key, never the raw one.
+    // (Stored rows now hold a non-reversible fingerprint — see
+    // shared/utils/apiKeyFingerprint.js — and normalizeStoredApiKey() also
+    // sanitises legacy rows that still contain a raw credential.)
+    expect(source).toMatch(/apiKeyMasked:\s*(maskApiKey|normalizeStoredApiKey)\(r\.apiKey\)/);
     // The return mapping in getUsageHistory should not have raw apiKey
     // (The internal ring buffer still uses apiKey: r.apiKey for internal state - that's fine)
     const historyReturn = source.match(/return rows\.map\(\(r\)\s*=>\s*\(\{[\s\S]*?\}\)\);/);

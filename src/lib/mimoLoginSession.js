@@ -109,7 +109,76 @@ function b64urlDecode(s) {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
-export function encodeSessionCookie(sess) {
+// ── Cookie integrity ────────────────────────────────────────────────────────
+// The session cookie carries `upstreamBase` (where the login proxy forwards to)
+// and the whole upstream cookie jar, and it is round-tripped through the
+// browser. An unsigned payload therefore let any client turn the app into an
+// open forwarder for an arbitrary host (SSRF / open proxy) whenever the
+// dashboard auth gate was permissive. Every cookie is now HMAC-SHA256 signed
+// with a key derived from the deployment secret, and unsigned v1/v2 payloads
+// are rejected outright.
+//
+// WebCrypto (not node:crypto) keeps this module edge/Workers-safe, which is why
+// signing is async — callers already run inside async request handlers.
+const SIGNING_CONTEXT = "jb-router:mimo-session:v1";
+let signingKeyPromise = null;
+
+async function loadSigningSecret() {
+  if (process.env.JWT_SECRET) return `${SIGNING_CONTEXT}:${process.env.JWT_SECRET}`;
+  // Node/self-host: reuse the persisted dashboard secret (the same one that
+  // signs the JWT). Loaded lazily so this module stays dependency-free unless
+  // it actually has to sign something.
+  const { getDashboardSecretString } = await import("@/lib/auth/dashboardSession.js");
+  return `${SIGNING_CONTEXT}:${getDashboardSecretString()}`;
+}
+
+function getSigningKey() {
+  if (!signingKeyPromise) {
+    signingKeyPromise = (async () => {
+      const secret = await loadSigningSecret();
+      return crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign", "verify"],
+      );
+    })().catch((err) => {
+      signingKeyPromise = null;
+      throw err;
+    });
+  }
+  return signingKeyPromise;
+}
+
+async function signPayload(payload) {
+  const key = await getSigningKey();
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return b64urlEncodeBytes(new Uint8Array(sig));
+}
+
+function b64urlEncodeBytes(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function verifyPayloadSignature(payload, signature) {
+  if (typeof signature !== "string" || !signature) return false;
+  let expected;
+  try {
+    expected = await signPayload(payload);
+  } catch {
+    return false;
+  }
+  // Both sides are base64url of fixed-length digests; compare in constant time.
+  if (expected.length !== signature.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  return diff === 0;
+}
+
+export async function encodeSessionCookie(sess) {
   const entries = [...sess.jar.values()].map((c) => [c.name, c.value, c.domain, c.path]);
   const base = { s: sess.state, r: sess.region, t: sess.createdAt, p: sess.proxyUrl || "" };
   let payload = JSON.stringify({ ...base, j: entries });
@@ -117,20 +186,24 @@ export function encodeSessionCookie(sess) {
     // Cookie budget: drop everything but identity/session essentials.
     payload = JSON.stringify({ ...base, j: entries.filter(([name]) => KEEP_ON_OVERFLOW.test(name)) });
   }
-  return `v2.${b64urlEncode(payload)}`;
+  const body = b64urlEncode(payload);
+  return `v3.${body}.${await signPayload(body)}`;
 }
 
-export function decodeSessionCookie(value) {
+export async function decodeSessionCookie(value) {
   if (!value) return null;
   let payload;
   try {
-    if (value.startsWith("v2.")) {
-      payload = JSON.parse(b64urlDecode(value.slice(3)));
-    } else if (value.startsWith("v1.")) {
-      payload = JSON.parse(decodeURIComponent(value.slice(3))); // legacy
-    } else {
-      return null;
-    }
+    // Only signed cookies are accepted. v1/v2 payloads were unsigned and are a
+    // forgery vector — a stale session cookie simply starts a fresh login.
+    if (!value.startsWith("v3.")) return null;
+    const rest = value.slice(3);
+    const dot = rest.lastIndexOf(".");
+    if (dot <= 0) return null;
+    const body = rest.slice(0, dot);
+    const sig = rest.slice(dot + 1);
+    if (!(await verifyPayloadSignature(body, sig))) return null;
+    payload = JSON.parse(b64urlDecode(body));
   } catch {
     return null;
   }
@@ -154,10 +227,10 @@ export function decodeSessionCookie(value) {
 }
 
 /** Read the session straight from an incoming request (any runtime). */
-export function sessionFromRequest(request) {
+export async function sessionFromRequest(request) {
   const raw = request.cookies?.get?.(SESSION_COOKIE)?.value
     ?? parseCookieHeader(request.headers?.get?.("cookie"))?.[SESSION_COOKIE];
-  return decodeSessionCookie(raw || null);
+  return await decodeSessionCookie(raw || null);
 }
 
 function parseCookieHeader(header) {
@@ -172,11 +245,11 @@ function parseCookieHeader(header) {
 }
 
 /** Append the re-encoded session to any Response (proxy writes go through here). */
-export function attachSessionCookie(response, sess) {
+export async function attachSessionCookie(response, sess) {
   const headers = new Headers(response.headers);
   headers.append(
     "Set-Cookie",
-    `${SESSION_COOKIE}=${encodeSessionCookie(sess)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+    `${SESSION_COOKIE}=${await encodeSessionCookie(sess)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
   );
   return new Response(response.body, {
     status: response.status,

@@ -5,7 +5,7 @@ import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const key = await getApiKeyById(id);
+    const key = await getApiKeyById(id, { withSecret: true });
     if (!key) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }

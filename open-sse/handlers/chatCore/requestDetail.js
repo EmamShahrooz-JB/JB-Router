@@ -1,3 +1,4 @@
+import { apiKeyFingerprint } from "@/shared/utils/apiKeyFingerprint.js";
 import { saveRequestUsage, appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { COLORS } from "../../utils/stream.js";
 import { canonicalizeUsage } from "../../utils/usageTracking.js";
@@ -127,7 +128,8 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
     tokens: normalized,
     timestamp: new Date().toISOString(),
     connectionId: connectionId || undefined,
-    apiKey: apiKey || undefined,
+    // Never persist the credential itself — only an opaque fingerprint.
+    apiKey: apiKeyFingerprint(apiKey) || undefined,
     endpoint: endpoint || null
   }).catch(() => {});
 }

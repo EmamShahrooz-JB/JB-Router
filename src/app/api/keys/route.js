@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // GET /api/keys - List API keys
 export async function GET() {
   try {
-    const keys = await getApiKeys();
+    const keys = await getApiKeys({ withSecret: true });
     return NextResponse.json({ keys });
   } catch (error) {
     console.log("Error fetching keys:", error);

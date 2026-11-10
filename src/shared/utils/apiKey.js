@@ -1,16 +1,27 @@
 import crypto from "crypto";
 
-const API_KEY_SECRET = process.env.API_KEY_SECRET || "endpoint-proxy-api-key-secret";
+const DEFAULT_API_KEY_SECRET = "endpoint-proxy-api-key-secret";
+const API_KEY_SECRET = process.env.API_KEY_SECRET || DEFAULT_API_KEY_SECRET;
+let warnedAboutDefaultSecret = false;
+
+function warnIfDefaultSecret() {
+  if (warnedAboutDefaultSecret || process.env.API_KEY_SECRET) return;
+  warnedAboutDefaultSecret = true;
+  console.warn(
+    "[apiKey] API_KEY_SECRET is not set — the CRC suffix on issued keys is computed with a " +
+    "public default. Set API_KEY_SECRET (or JWT_SECRET) before exposing this instance.",
+  );
+}
 
 /**
  * Generate 6-char random keyId
  */
 function generateKeyId() {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  // crypto.randomInt, not Math.random: the keyId is embedded in the issued key
+  // and must not be predictable from previously issued keys.
   let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  for (let i = 0; i < 6; i++) result += chars.charAt(crypto.randomInt(chars.length));
   return result;
 }
 
@@ -18,6 +29,7 @@ function generateKeyId() {
  * Generate CRC (8-char HMAC)
  */
 function generateCrc(machineId, keyId) {
+  warnIfDefaultSecret();
   return crypto
     .createHmac("sha256", API_KEY_SECRET)
     .update(machineId + keyId)

@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { getProxyPoolById, updateProxyPool } from "@/models";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { fetch as undiciFetch } from "undici";
+import { assertNotMetadataUrlResolved } from "@/shared/utils/ssrfGuard.js";
 
 async function testVercelRelay(relayUrl, timeoutMs = 10000) {
   const controller = new AbortController();
   const startedAt = Date.now();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    await assertNotMetadataUrlResolved(relayUrl);
     const res = await undiciFetch(relayUrl, {
       method: "GET",
       headers: {

@@ -139,7 +139,7 @@ async function autoStartMitm(settings) {
       return;
     }
 
-    const keys = await getApiKeys();
+    const keys = await getApiKeys({ withSecret: true });
     const activeKey = keys.find(k => k.isActive !== false);
 
     console.log("[InitApp] MITM was enabled, auto-starting...");

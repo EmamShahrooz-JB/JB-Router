@@ -6,8 +6,43 @@ import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.
 import { getAntigravityQuotaCache } from "./antigravityQuota.js";
 import * as log from "../utils/logger.js";
 
-// Mutex to prevent race conditions during account selection
-let selectionMutex = Promise.resolve();
+// Per-provider mutex to prevent race conditions during account selection.
+//
+// This used to be ONE global promise chain, so a busy provider serialised
+// account selection for every other provider too — with 5 concurrent providers
+// each request queued behind all the others. The lock is now scoped per
+// provider, and a waiter gives up after a timeout instead of deadlocking the
+// whole gateway if one holder throws or leaks its promise.
+const SELECTION_LOCK_TIMEOUT_MS = Number(process.env.JB_ROUTER_SELECTION_LOCK_TIMEOUT_MS || 10_000);
+const selectionLocks = new Map(); // scope → { tail: Promise<void> }
+
+function acquireSelectionLock(scope) {
+  const key = scope || "global";
+  const entry = selectionLocks.get(key) || { tail: Promise.resolve() };
+  const previous = entry.tail;
+  let release;
+  const current = new Promise((resolve) => { release = resolve; });
+  entry.tail = previous.then(() => current).catch(() => { });
+  selectionLocks.set(key, entry);
+
+  const wait = Promise.race([
+    previous.catch(() => { }),
+    new Promise((resolve) => setTimeout(resolve, SELECTION_LOCK_TIMEOUT_MS)),
+  ]);
+
+  return {
+    wait,
+    release: () => {
+      release();
+      // Drop the entry once nobody is queued behind us.
+      if (selectionLocks.get(key)?.tail === entry.tail) {
+        Promise.resolve().then(() => {
+          if (selectionLocks.get(key) === entry) selectionLocks.delete(key);
+        });
+      }
+    },
+  };
+}
 
 const GITHUB_MONTHLY_USAGE_LIMIT = "you've reached your additional usage limit for your plan";
 
@@ -34,13 +69,11 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
   // Explicit dashboard probes bypass recorded cooldowns so the user sees the
   // real upstream answer instead of a cached "all accounts locked" 503.
   const ignoreModelLocks = options?.ignoreModelLocks === true;
-  // Acquire mutex to prevent race conditions
-  const currentMutex = selectionMutex;
-  let resolveMutex;
-  selectionMutex = new Promise(resolve => { resolveMutex = resolve; });
+  // Serialise account selection per provider (see acquireSelectionLock)
+  const selectionLock = acquireSelectionLock(provider);
 
   try {
-    await currentMutex;
+    await selectionLock.wait;
 
     // Resolve alias to provider ID (e.g., "kc" -> "kilocode")
     const providerId = resolveProviderId(provider);
@@ -227,7 +260,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       _connection: connection
     };
   } finally {
-    if (resolveMutex) resolveMutex();
+    selectionLock.release();
   }
 }
 

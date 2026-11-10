@@ -3,6 +3,9 @@ import { getAdapter } from "../driver.js";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
 import { getMeta, setMeta } from "../helpers/metaStore.js";
 
+// Usage rows store a non-reversible key fingerprint, not the credential itself.
+import { normalizeStoredApiKey } from "@/shared/utils/apiKeyFingerprint.js";
+
 function maskApiKey(key) {
   if (!key || typeof key !== "string") return null;
   if (key.length <= 8) return key.charAt(0) + "***";
@@ -328,7 +331,7 @@ export async function getUsageHistory(filter = {}) {
 
   return rows.map((r) => ({
     timestamp: r.timestamp, provider: r.provider, model: r.model,
-    connectionId: r.connectionId, apiKeyMasked: maskApiKey(r.apiKey), endpoint: r.endpoint,
+    connectionId: r.connectionId, apiKeyMasked: normalizeStoredApiKey(r.apiKey), endpoint: r.endpoint,
     cost: r.cost, status: r.status, tokens: parseJson(r.tokens, {}),
   }));
 }
@@ -366,7 +369,10 @@ export async function getUsageStats(period = "all") {
   let allApiKeys = [];
   try { allApiKeys = await getApiKeys(); } catch {}
   const apiKeyMap = {};
-  for (const k of allApiKeys) apiKeyMap[k.key] = { name: k.name, id: k.id, createdAt: k.createdAt };
+  for (const k of allApiKeys) {
+    if (!k.keyId) continue;
+    apiKeyMap[`id:${k.keyId}`] = { name: k.name, id: k.id, createdAt: k.createdAt };
+  }
 
   // recentRequests from live history (last 100 entries enough for 20 deduped)
   const recentRows = db.all(`SELECT timestamp, provider, model, tokens, status FROM usageHistory ORDER BY id DESC LIMIT 100`);
@@ -506,8 +512,8 @@ export async function getUsageStats(period = "all") {
         const providerDisplayName = providerNodeNameMap[provider] || provider;
         const apiKeyVal = ak.apiKey;
         const keyInfo = apiKeyVal ? apiKeyMap[apiKeyVal] : null;
-        const keyName = keyInfo?.name || (apiKeyVal ? apiKeyVal.slice(0, 8) + "..." : "Local (No API Key)");
-        const apiKeyMasked = maskApiKey(apiKeyVal);
+        const keyName = keyInfo?.name || (apiKeyVal ? String(apiKeyVal) : "Local (No API Key)");
+        const apiKeyMasked = normalizeStoredApiKey(apiKeyVal);
         const apiKeyKey = apiKeyMasked || "local-no-key";
         if (!stats.byApiKey[akKey]) {
           stats.byApiKey[akKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0, rawModel, provider: providerDisplayName, apiKeyMasked, keyName, apiKeyKey, lastUsed: dateKey };
@@ -632,8 +638,8 @@ export async function getUsageStats(period = "all") {
 
       if (r.apiKey && typeof r.apiKey === "string") {
         const keyInfo = apiKeyMap[r.apiKey];
-        const keyName = keyInfo?.name || r.apiKey.slice(0, 8) + "...";
-        const apiKeyMasked = maskApiKey(r.apiKey);
+        const keyName = keyInfo?.name || String(r.apiKey);
+        const apiKeyMasked = normalizeStoredApiKey(r.apiKey);
         const akKey = `${apiKeyMasked}|${r.model}|${r.provider || "unknown"}`;
         if (!stats.byApiKey[akKey]) {
           stats.byApiKey[akKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0, rawModel: r.model, provider: providerDisplayName, apiKeyMasked, keyName, apiKeyKey: apiKeyMasked, lastUsed: r.timestamp };

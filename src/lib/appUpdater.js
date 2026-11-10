@@ -1,4 +1,4 @@
-import { spawn, execSync } from "child_process";
+import { spawn, execSync, execFileSync } from "child_process";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -21,14 +21,15 @@ function killMitmByPidFile() {
     const pid = parseInt(fs.readFileSync(mitmPidFile, "utf8").trim(), 10);
     if (!pid) return;
 
+    if (!Number.isSafeInteger(pid) || pid <= 0) return;
     if (process.platform === "win32") {
       // taskkill first (works if same user); fallback to PowerShell Stop-Process which can kill admin process if our token allows
-      try { execSync(`taskkill /F /T /PID ${pid}`, { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch {
-        try { execSync(`powershell -NonInteractive -WindowStyle Hidden -Command "Stop-Process -Id ${pid} -Force"`, { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch { /* best effort */ }
+      try { execFileSync("taskkill", ["/F", "/T", "/PID", String(pid)], { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch {
+        try { execFileSync("powershell", ["-NonInteractive", "-WindowStyle", "Hidden", "-Command", `Stop-Process -Id ${pid} -Force`], { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch { /* best effort */ }
       }
     } else {
       try {
-        execSync(`sudo -n kill -9 ${pid} 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+        execFileSync("sudo", ["-n", "kill", "-9", String(pid)], { stdio: "ignore", timeout: 3000 });
       } catch {
         try { process.kill(pid, "SIGKILL"); } catch { /* best effort */ }
       }
@@ -77,22 +78,59 @@ function collectAppPids() {
     try {
       const output = execSync("ps aux 2>/dev/null", { encoding: "utf8", timeout: KILL_TIMEOUT_MS });
       output.split("\n").forEach(line => {
-        const isAppProcess = line.includes("jb-router") ||
-          line.includes("next-server") ||
-          line.includes("cloudflared") ||
-          line.includes("/bin/app/") ||
-          line.includes("tray_darwin") ||
-          line.includes("tray_linux");
-        if (isAppProcess) {
-          const parts = line.trim().split(/\s+/);
-          const pid = parts[1];
-          if (pid && !isNaN(pid) && pid !== process.pid.toString()) pids.push(pid);
-        }
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[1];
+        if (!pid || isNaN(pid) || pid === process.pid.toString()) return;
+        // Never key off a bare substring: "jb-router" also matches an editor
+        // with the repo open, a `tail -f ~/.jb-router/...`, an ssh session, or
+        // another app's docker args, and "next-server"/"cli.js" match any
+        // unrelated project. Require the process to actually belong to THIS
+        // install (its argv/cwd lives under our app dir) or to be one of the
+        // helper binaries we spawn ourselves.
+        if (isOwnAppProcess(pid, line)) pids.push(pid);
       });
     } catch { /* no processes */ }
   }
 
   return pids;
+}
+
+// Root(s) that identify this installation: the app dir (standalone bin/app),
+// the repo checkout, and the per-user data dir. A PID only qualifies when its
+// command line references one of them.
+function getAppRoots() {
+  const roots = new Set();
+  const add = (p) => { if (p && typeof p === "string") roots.add(path.resolve(p)); };
+  add(process.cwd());
+  add(path.dirname(process.argv[1] || ""));
+  add(path.join(getDataDir(), "runtime"));
+  const envAppDir = process.env.JB_ROUTER_APP_DIR;
+  if (envAppDir) add(envAppDir);
+  return [...roots].filter(Boolean);
+}
+
+function isOwnAppProcess(pid, psLine) {
+  // Helper binaries spawned by the app itself.
+  if (/tray_(darwin|linux|windows_release)/.test(psLine)) return true;
+  if (/\bcloudflared\b/.test(psLine) && psLine.includes(getDataDir())) return true;
+
+  const roots = getAppRoots();
+  const argv = readProcessArgv(pid);
+  const haystacks = [argv, psLine].filter(Boolean);
+  return haystacks.some((h) => roots.some((root) => root && root.length > 3 && h.includes(root)));
+}
+
+// argv (Linux/macOS) — the kernel's view, not a shell-expanded string.
+function readProcessArgv(pid) {
+  try {
+    if (process.platform === "linux") {
+      return fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean).join(" ");
+    }
+    if (process.platform === "darwin") {
+      return execSync(`ps -o command= -p ${Number(pid)}`, { encoding: "utf8", timeout: 2000 }).trim();
+    }
+  } catch { /* process gone or unreadable */ }
+  return "";
 }
 
 // Copy updater.js into DATA_DIR so npm -g can overwrite node_modules safely
@@ -141,12 +179,12 @@ export async function killAppProcesses() {
   const pids = collectAppPids();
   const platform = process.platform;
 
-  pids.forEach(pid => {
+  pids.map((p) => Number(String(p).trim())).filter((p) => Number.isSafeInteger(p) && p > 0).forEach(pid => {
     try {
       if (platform === "win32") {
-        execSync(`taskkill /F /PID ${pid} 2>nul`, { stdio: "ignore", shell: true, windowsHide: true, timeout: 3000 });
+        execFileSync("taskkill", ["/F", "/PID", String(pid)], { stdio: "ignore", windowsHide: true, timeout: 3000 });
       } else {
-        execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+        process.kill(pid, "SIGKILL");
       }
     } catch { /* already dead */ }
   });

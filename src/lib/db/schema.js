@@ -78,7 +78,12 @@ export const TABLES = {
   apiKeys: {
     columns: {
       id: "TEXT PRIMARY KEY",
+      // SHA-256 digest of the issued key (never the key itself).
       key: "TEXT UNIQUE NOT NULL",
+      // AES-256-GCM copy, only for paths that must show/forward the real key.
+      keyEnc: "TEXT",
+      keyPrefix: "TEXT",
+      keyId: "TEXT",
       name: "TEXT",
       machineId: "TEXT",
       isActive: "INTEGER DEFAULT 1",
