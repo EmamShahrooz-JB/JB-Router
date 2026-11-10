@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بازبینی جامع کد JB-Router</title>
+<style>
+  :root{--bg:#0f1115;--panel:#161a21;--panel2:#1c222b;--fg:#e8ecf3;--muted:#9aa6b8;--acc:#6ea8fe;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--line:#2a3240;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:"Vazirmatn","Segoe UI","IRANSans","Tahoma",system-ui,-apple-system,sans-serif;
+    line-height:1.95;font-size:16px;}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 22px 90px;}
+  h1{font-size:1.9rem;line-height:1.5;margin:.2em 0 .6em;border-bottom:2px solid var(--acc);padding-bottom:.4em}
+  h2{font-size:1.4rem;margin:2.2em 0 .7em;padding:.35em .6em;background:linear-gradient(90deg,var(--panel2),transparent);border-right:4px solid var(--acc);border-radius:6px}
+  h3{font-size:1.12rem;margin:1.6em 0 .5em;color:#cfe0ff}
+  p{margin:.7em 0}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  hr{border:0;border-top:1px solid var(--line);margin:2.4em 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;
+    background:#0b0e13;border:1px solid var(--line);border-radius:5px;padding:.1em .38em;direction:ltr;display:inline-block}
+  pre{direction:ltr;text-align:left;background:#0b0e13;border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow:auto;line-height:1.65;margin:1em 0}
+  pre code{background:none;border:0;padding:0;font-size:.86em;display:block}
+  blockquote{margin:1.1em 0;padding:.6em 1em;border-right:4px solid var(--warn);background:#1a1607;border-radius:6px;color:#e9d9a8}
+  table{width:100%;border-collapse:collapse;margin:1.2em 0;font-size:.92rem;background:var(--panel);border-radius:10px;overflow:hidden;display:table}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:right;vertical-align:top}
+  th{background:#202836;color:#cfe0ff;font-weight:600}
+  tr:nth-child(even) td{background:#131820}
+  ul,ol{padding-right:1.5em;margin:.7em 0}
+  li{margin:.35em 0}
+  strong{color:#fff}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 34px}
+  .toc-title{font-weight:700;color:var(--acc);margin-bottom:.4em}
+  .toc ol{padding-right:1.3em;columns:2;column-gap:34px}
+  .toc li{margin:.2em 0;font-size:.93rem}
+  @media(max-width:700px){.toc ol{columns:1}body{font-size:15px}}
+  /* severity colouring inside tables */
+  td:first-child{white-space:nowrap}
+</style>
+</head>
+<body><div class="wrap">
+<nav class="toc"><div class="toc-title">فهرست</div><ol><li><a href="#۰.-هشدار-فوری:-توکن-GitHub-شما">۰. هشدار فوری: توکن GitHub شما</a></li><li><a href="#۱.-خلاصه-اجرایی">۱. خلاصه اجرایی</a></li><li><a href="#۲.-روش-بازبینی-و-پوشش-واقعی">۲. روش بازبینی و پوشش واقعی</a></li><li><a href="#۳.-نقشهٔ-معماری">۳. نقشهٔ معماری</a></li><li><a href="#۴.-یافته‌های-امنیتی">۴. یافته‌های امنیتی</a></li><li><a href="#۵.-باگ‌ها-و-مسائل-صحت">۵. باگ‌ها و مسائل صحت</a></li><li><a href="#۶.-معماری-و-طراحی">۶. معماری و طراحی</a></li><li><a href="#۷.-کیفیت-کد-و-نگهداشت">۷. کیفیت کد و نگهداشت</a></li><li><a href="#۸.-کارایی-و-مقیاس‌پذیری">۸. کارایی و مقیاس‌پذیری</a></li><li><a href="#۹.-تست،-CI-و-انتشار">۹. تست، CI و انتشار</a></li><li><a href="#۱۰.-وابستگی‌ها">۱۰. وابستگی‌ها</a></li><li><a href="#۱۱.-مستندات-و-پیکربندی">۱۱. مستندات و پیکربندی</a></li><li><a href="#۱۲.-بازبینی-خط‌به‌خط-ماژول‌های-هسته-(فایل‌به‌فایل)">۱۲. بازبینی خط‌به‌خط ماژول‌های هسته (فایل‌به‌فایل)</a></li><li><a href="#۱۳.-نقاط-قوت-(که-نباید-در-بازنویسی-از-دست-بروند)">۱۳. نقاط قوت (که نباید در بازنویسی از دست بروند)</a></li><li><a href="#۱۴.-نقشهٔ-راه-اولویت‌دار">۱۴. نقشهٔ راه اولویت‌دار</a></li><li><a href="#۱۵.-ضمیمهٔ-آماری">۱۵. ضمیمهٔ آماری</a></li></ol></nav>
+<h1>بازبینی جامع و خط‌به‌خط کد پروژه JB-Router</h1>
+<p><strong>مخزن:</strong> <code>EmamShahrooz-JB/JB-Router</code> — شاخه <code>main</code> — کامیت <code>7814edf</code> (۲۸ سپتامبر ۲۰۲۶)
+<strong>نسخه اپلیکیشن:</strong> <code>jb-router-app</code> v0.5.90 (CLI جداگانه: <code>jb-router</code>)
+<strong>تاریخ بازبینی:</strong> ۱۰ نوامبر ۲۰۲۶
+<strong>حجم کد بازبینی‌شده:</strong> ۱٬۲۹۲ فایل کد / ۱۸۹٬۰۸۵ خط (بدون تست‌ها: ۹۵۶ فایل / ۱۴۶٬۵۹۲ خط)</p>
+<hr>
+<h2 id="۰.-هشدار-فوری:-توکن-GitHub-شما">۰. هشدار فوری: توکن GitHub شما</h2>
+<p>توکنی که در پیام گذاشتید (<code>ghp_O7Le...tk0B</code>) <strong>معتبر است و دسترسی کامل به حساب شما دارد</strong> (همه ریپوهای خصوصی، از جمله <code>jb-mail</code>, <code>JB-VPN-Mother</code>, <code>Shahrooz-Market</code>).</p>
+<ul>
+<li>توکن را همین حالا در <strong>GitHub → Settings → Developer settings → Personal access tokens</strong> باطل (revoke) کنید و توکن جدید بسازید.</li>
+<li>هر متن/چتی که توکن در آن نوشته شده، باید فرض شود که «لو رفته» است.</li>
+<li>برای دفعات بعد، به‌جای توکن، ریپو را Public کنید یا از یک توکن fine-grained فقط‌خواندنی و محدود به همان یک ریپو استفاده کنید.</li>
+</ul>
+<blockquote>
+<p>من فقط از توکن برای خواندن همین ریپو استفاده کردم و هیچ تغییری در حساب شما ایجاد نشد.</p>
+</blockquote>
+<hr>
+<h2 id="۱.-خلاصه-اجرایی">۱. خلاصه اجرایی</h2>
+<p>JB-Router یک <strong>گیت‌وی مسیریابی هوش مصنوعی (AI Gateway)</strong> است: یک endpoint سازگار با OpenAI (<code>/v1/*</code>) که درخواست را می‌گیرد، فرمت را ترجمه می‌کند و به ۴۰+ ارائه‌دهندهٔ بالادست (Anthropic, Gemini, OpenAI-compatible, Copilot, Cursor, Kiro, Codex, …) می‌فرستد؛ به‌همراه مدیریت OAuth/API-Key چند‌حسابی، fallback، شمارش مصرف، و یک داشبورد Next.js.</p>
+<p><strong>جمع‌بندی من:</strong> این پروژه از نظر «مهندسی مسیر درخواست» واقعاً قوی و بالغ است — چند جا کدهایی دیدم (مثل <code>ssrfGuard.js</code> یا <code>custom-server.js</code>) که سطح آن از اکثر پروژه‌های مشابه بالاتر است. اما سه ضعف سیستماتیک دارد:</p>
+<ol>
+<li><strong>کاهش کیفیت در لایهٔ «پیرامونی»</strong>: ۹۱ خطای <code>react-hooks/set-state-in-effect</code>، ۶۷۵ <code>console.log</code>، ۱۵۸ <code>catch {}</code> خالی، ۸۴ <code>.catch(() =&gt; {})</code> — یعنی خطاها به‌صورت خاموش بلعیده می‌شوند.</li>
+<li><strong>تکرار شدید کد</strong> (۲۶ کارت CLI تقریباً یکسان، منطق combo دوبار در <code>chat.js</code>) که باعث واگرایی تدریجی و باگ‌های «فقط یکی از دو نسخه اصلاح شد» می‌شود.</li>
+<li><strong>شکاف در چارچوب امنیتی/کیفی</strong>: هیچ rate-limit روی <code>/v1</code>، هیچ CI‌ای که lint/test را اجرا کند، و ۱۱ آسیب‌پذیری وابستگی (شامل ۱ critical در <code>next</code> و high در <code>undici</code> که موتور اصلی fetch شماست).</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>حوزه</th>
+<th>نمره (از ۱۰)</th>
+<th>توضیح کوتاه</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>معماری مسیر درخواست</td>
+<td>۸.۵</td>
+<td>تفکیک translator / executor / registry تمیز و config-driven</td>
+</tr>
+<tr>
+<td>امنیت</td>
+<td>۶.۵</td>
+<td>پایه‌های خوب (SSRF guard، localhost gate، ضد-XFF) اما شکاف‌های مشخص</td>
+</tr>
+<tr>
+<td>صحت و پایداری</td>
+<td>۷</td>
+<td>توکن‌رفرش، fallback و breaker خوب؛ اما بلعیدن خطا و تکرار منطق</td>
+</tr>
+<tr>
+<td>کیفیت/نگهداشت کد</td>
+<td>۵.۵</td>
+<td>فایل‌های ۲۰۰۰ خطی، ۱۴۷۳ بلوک تکراری، JS بدون type</td>
+</tr>
+<tr>
+<td>کارایی</td>
+<td>۶.۵</td>
+<td>mutex سراسری انتخاب اکانت، خواندن مکرر settings در هر درخواست</td>
+</tr>
+<tr>
+<td>تست و CI</td>
+<td>۵</td>
+<td>۲۸۱ فایل تست خوب، اما هیچ CI و «سوییت به‌طور پیش‌فرض سبز نیست»</td>
+</tr>
+<tr>
+<td>وابستگی‌ها</td>
+<td>۵.۵</td>
+<td>۱۱ آسیب‌پذیری، از جمله <code>next</code> critical و <code>undici</code> high</td>
+</tr>
+<tr>
+<td>مستندسازی</td>
+<td>۸.۵</td>
+<td>README/CLAUDE.md/ARCHITECTURE/WORKERS عالی</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="۲.-روش-بازبینی-و-پوشش-واقعی">۲. روش بازبینی و پوشش واقعی</h2>
+<p>صادق باشیم: <strong>۱۸۹ هزار خط را نمی‌توان در یک پاسخ «خط‌به‌خط با چشم» خواند</strong> — هر کسی که خلاف این را بگوید، در واقع نمونه‌خوانی کرده. کاری که من کردم، ترکیبی از سه لایه است تا پوشش واقعاً کامل شود:</p>
+<p><strong>لایهٔ ۱ — خواندن کامل و خط‌به‌خط (با شمارهٔ خط) فایل‌های «هستهٔ تصمیم‌گیری»:</strong>
+<code>src/proxy.js</code> (۷۳ خط)، <code>src/dashboardGuard.js</code> (۲۸۲ خط، کامل)، <code>src/lib/auth/*</code> (۵ فایل)، <code>src/app/api/auth/login/route.js</code>، <code>src/sse/handlers/chat.js</code> (۳۴۲ خط، کامل)، <code>open-sse/handlers/chatCore.js</code> (۵۱۷ خط)، <code>open-sse/executors/default.js</code>، <code>open-sse/services/combo.js</code>، <code>src/sse/services/auth.js</code>، <code>src/shared/utils/ssrfGuard.js</code> (۲۱۵ خط، کامل)، <code>custom-server.js</code> (۱۳۹ خط، کامل)، <code>src/lib/appUpdater.js</code>، <code>src/lib/db/repos/apiKeysRepo.js</code>، <code>src/lib/db/driver.js</code>، <code>src/lib/mimoLoginSession.js</code>، <code>src/lib/db/repos/settingsRepo.js</code>، <code>open-sse/utils/streamHandler.js</code>، <code>src/shared/utils/apiKey.js</code>، <code>machineId.js</code>، … (حدود ۶٬۵۰۰ خط، همه با ارجاع دقیق در بخش ۱۲).</p>
+<p><strong>لایهٔ ۲ — تحلیل ایستا روی ۱۰۰٪ فایل‌ها (نه نمونه):</strong></p>
+<ul>
+<li>اجرای واقعی <code>npm install</code> + <code>npx eslint .</code> روی کل مخزن → ۳۴۵ پیام در ۲۲۴ فایل (نتایج خام در <code>JB-Router-files-audit.csv</code>).</li>
+<li>اجرای <code>npm audit</code> روی درخت وابستگی واقعی.</li>
+<li>اسکنر اختصاصی خودم روی ۱٬۲۴۹ فایل (۱۸۹٬۰۸۵ خط) برای ۱۸ الگوی خطر (catch خالی، <code>.catch(()=&gt;{})</code>، <code>console.log</code>، <code>child_process</code>، نوشتن فایل، ساخت SQL، <code>JSON.parse</code> بدون try، …).</li>
+<li>تشخیص کد تکراری (clone detection) با پنجرهٔ ۸ خطی نرمال‌شده → ۱٬۴۷۳ پنجرهٔ تکراری.</li>
+<li>نگاشت پوشش احراز هویت روی <strong>هر ۱۶۶ فایل <code>route.js</code></strong>.</li>
+</ul>
+<p><strong>لایهٔ ۳ — بازبینی «قرارداد» ماژول‌ها:</strong> برای هر ماژول، ورودی/خروجی، خطاها و مسیر داده را بررسی کردم (بخش ۱۲).</p>
+<p><strong>خروجی‌ها:</strong></p>
+<ul>
+<li>همین گزارش (تحلیل، یافته‌ها، اصلاح پیشنهادی)</li>
+<li><code>JB-Router-files-audit.csv</code> — شیت بازبینی همهٔ ۹۵۶ فایل سورس: LOC، تعداد خطاهای ESLint، تعداد fetch/fs/SQL/JSON.parse و پرچم‌های خطر. این فایل «پوشش کامل» را قابل راستی‌آزمایی می‌کند.</li>
+</ul>
+<hr>
+<h2 id="۳.-نقشهٔ-معماری">۳. نقشهٔ معماری</h2>
+<pre><code>client (Claude Code / Cursor / Codex / Cline / curl …)
+   │  Authorization: Bearer sk-…
+   ▼
+next.config.mjs  rewrites: /v1/* → /api/v1/*   (+ /codex, /responses, /v1beta)
+   ▼
+src/proxy.js  (Next 16 middleware)  ─────────────► src/dashboardGuard.js
+   │   • PUBLIC_PREFIXES = /v1, /v1beta, /api/v1 … (auth داخلی)
+   │   • LOCAL_ONLY_PATHS (spawn/سکرت میزبان) → فقط loopback+JWT یا CLI token
+   │   • deny-by-default برای /api/*
+   │   • mimo-login forwarder branch
+   ▼
+src/app/api/v1/chat/completions/route.js   (لایهٔ نازک)
+   ▼
+src/sse/handlers/chat.js         ← چسب سمت اپ: requireApiKey، combo، حل مدل،
+   │                               حلقهٔ fallback بین اکانت‌ها
+   ▼
+open-sse/handlers/chatCore.js    ← مغز: detectFormat → translate → executor
+   │                               → refresh/retry → stream/non-stream
+   ├─ open-sse/translator/*       (pivot روی OpenAI؛ مسیرهای مستقیم source:target)
+   ├─ open-sse/executors/*        (default.js برای هر OpenAI-compatible + ۳۰ اکزکوتور خاص)
+   ├─ open-sse/rtk/*              (فشرده‌سازی tool_result: caveman/ponytail/headroom/pxpipe)
+   └─ open-sse/providers/registry (۱۲۵ فایل، auto-generated)
+   ▼
+upstream provider  →  SSE/JSON back to client
+</code></pre>
+<p><strong>لایهٔ داده:</strong> <code>src/lib/db/</code> با زنجیرهٔ fallback درایور SQLite: <code>bun:sqlite</code> → <code>better-sqlite3</code> → <code>node:sqlite</code> → <code>sql.js</code>؛ روی Cloudflare Workers یک Durable Object (<code>durableSqliteAdapter</code>). مسیر فایل: <code>DATA_DIR</code> یا <code>~/.jb-router/</code>.</p>
+<p><strong>خروجی‌های استقرار (۴ تایی):</strong> Node standalone (<code>custom-server.js</code>)، Bun، Cloudflare Workers (OpenNext + DO)، و پکیج npm CLI (<code>cli/</code>). یعنی یک کد، چهار محیط اجرا — و این خودش منبع بخش بزرگی از پیچیدگی‌هاست (<code>navigator.userAgent === &quot;Cloudflare-Workers&quot;</code> در چند فایل).</p>
+<hr>
+<h2 id="۴.-یافته‌های-امنیتی">۴. یافته‌های امنیتی</h2>
+<p>خلاصهٔ یافته‌ها اول، جزئیات بعد:</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>شدت</th>
+<th>عنوان</th>
+<th>محل</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SEC-01</td>
+<td><strong>بالا</strong></td>
+<td>پروکسی «mimo-login» با کوکی <strong>امضانشده</strong> = open-proxy/SSRF وقتی <code>requireLogin=false</code></td>
+<td><code>src/proxy.js:22-68</code>، <code>src/lib/mimoLoginSession.js:123-161</code></td>
+</tr>
+<tr>
+<td>SEC-02</td>
+<td><strong>بالا</strong></td>
+<td>API Keyهای کاربران به‌صورت <strong>plaintext</strong> ذخیره و کامل برگردانده می‌شوند</td>
+<td><code>src/lib/db/repos/apiKeysRepo.js:36,72</code>، <code>src/app/api/keys/route.js:9-12</code></td>
+</tr>
+<tr>
+<td>SEC-03</td>
+<td><strong>بالا</strong></td>
+<td><strong>هیچ rate-limit روی <code>/v1/*</code></strong> (فقط لاگین محدود شده)</td>
+<td><code>src/dashboardGuard.js:222-225</code></td>
+</tr>
+<tr>
+<td>SEC-04</td>
+<td>متوسط</td>
+<td>SSRF در مسیرهای «تست/اعتبارسنجی» که guard ندارند + TOCTOU در DNS</td>
+<td><code>api/providers/validate/route.js:41,75,107</code>، <code>api/settings/proxy-test</code>، <code>api/proxy-pools/[id]/test</code></td>
+</tr>
+<tr>
+<td>SEC-05</td>
+<td>متوسط</td>
+<td><code>killAppProcesses()</code> هر پروسه‌ای که در <code>ps aux</code> رشتهٔ <code>jb-router</code> دارد را <code>kill -9</code> می‌کند</td>
+<td><code>src/lib/appUpdater.js:78-95,140-155</code></td>
+</tr>
+<tr>
+<td>SEC-06</td>
+<td>متوسط</td>
+<td>قفل‌شدن لاگین با کلید <code>&quot;unknown&quot;</code> = DoS سراسری (بدون custom-server)</td>
+<td><code>src/lib/auth/loginLimiter.js:49-64</code></td>
+</tr>
+<tr>
+<td>SEC-07</td>
+<td>متوسط</td>
+<td>تولید API Key با <code>Math.random()</code> و HMAC با سکرت <strong>پیش‌فرض</strong></td>
+<td><code>src/shared/utils/apiKey.js:3,8-26</code></td>
+</tr>
+<tr>
+<td>SEC-08</td>
+<td>متوسط</td>
+<td>بدنهٔ نامحدود در مسیر <code>h2c</code> → مصرف حافظه/DoS</td>
+<td><code>custom-server.js:87-119</code></td>
+</tr>
+<tr>
+<td>SEC-09</td>
+<td>کم</td>
+<td>مقایسهٔ رمز با <code>===</code> (غیر constant-time)</td>
+<td><code>api/auth/login/route.js:59</code>، <code>lib/auth/dashboardSession.js:86</code></td>
+</tr>
+<tr>
+<td>SEC-10</td>
+<td>کم</td>
+<td>نشت پیام خطای داخلی در پاسخ‌های ۵۰۰</td>
+<td>۱۲+ فایل route (نمونه: <code>api/settings/route.js:29</code>)</td>
+</tr>
+<tr>
+<td>SEC-11</td>
+<td>کم</td>
+<td>مقایسهٔ توکن CLI با <code>===</code> و کش سراسری</td>
+<td><code>src/dashboardGuard.js:16-20</code></td>
+</tr>
+<tr>
+<td>SEC-12</td>
+<td>اطلاعاتی</td>
+<td><code>JWT_SECRET</code> در غیر Workers به‌صورت فایل تولید می‌شود (خوب) اما بدون هیچ هشدار امنیتی روی <code>INITIAL_PASSWORD</code></td>
+<td><code>lib/auth/dashboardSession.js:12-27</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h3>SEC-01 · کوکی mimo-login امضا نشده است → Open Proxy / SSRF</h3>
+<p><strong>شدت: بالا (به‌شرط <code>requireLogin=false</code>) · بردار: شبکه</strong></p>
+<p><code>src/proxy.js</code> قبل از هر چیز بررسی می‌کند آیا کوکی <code>jb_router_mimo_login</code> وجود دارد؛ اگر بله، <code>sessionFromRequest()</code> آن را دیکد می‌کند و مقادیر <strong>از payload خود مرورگر</strong> (<code>upstreamBase</code>, <code>jar</code>) در ساخت URL بالادست استفاده می‌شوند:</p>
+<pre><code class="language-js">// src/proxy.js:38-49
+const sess = sessionFromRequest(request);
+if (sess) {
+  const upstreamUrl = `${sess.upstreamBase}${takeoverUpstreamPath(pathname)}${search}`;
+  return attachSessionCookie(await runTakeover(sess, upstreamUrl, origin), sess);
+  ...
+  if (isAccountProxyPath(pathname)) return attachSessionCookie(await proxyAccountRequest(sess, request, origin), sess);
+}
+</code></pre>
+<p>و <code>decodeSessionCookie</code> (<code>mimoLoginSession.js:123</code>) فقط <code>base64url</code> + <code>JSON.parse</code> است — <strong>هیچ امضا/HMAC ندارد</strong> (فقط TTL چک می‌شود). <code>isAccountProxyPath</code> هم عمداً «همه‌چیز جز مسیرهای خود اپ» را پروکسی می‌کند (<code>mimoLoginSession.js:419-423</code>).</p>
+<p>گیت این مسیر، <code>isAuthenticated(request)</code> است که در <code>dashboardGuard.js:182-187</code> وقتی <code>settings.requireLogin === false</code> <strong>همیشه true</strong> است. <code>requireLogin=false</code> یک تنظیم رسمی و پرکاربرد است (داشبورد دکمه‌اش را دارد، و برای استفادهٔ LAN/local رایج است). در آن حالت:</p>
+<pre><code class="language-bash"># هیچ کوکی/توکن معتبری لازم نیست؛ فقط یک کوکی جعلی base64:
+curl &#39;http://host:20128/anything&#39; \
+  -H &#39;Cookie: jb_router_mimo_login=v2.eyJ0IjoxNzAwMDAwMDAwMDAsInVwZHN0cmVhbUJhc2UiOiJodHRwOi8vMTY5LjI1NC4xNjkuMjU0IiwiaiI6W119&#39;
+# ⇒ سرور درخواست را به http://169.254.169.254/... می‌فرستد و پاسخ را برمی‌گرداند
+</code></pre>
+<p><strong>تأثیر:</strong> SSRF کامل (شامل cloud metadata روی <code>169.254.169.254</code>)، open proxy (جعل IP/لاگ، استفاده از سرور شما به‌عنوان relay)، و خواندن پاسخ سرویس‌های داخلی. حتی با <code>requireLogin=true</code> هم هر کاربر داشبورد می‌تواند همین کار را بکند (شدت متوسط).</p>
+<p><strong>اصلاح:</strong></p>
+<ol>
+<li>کوکی session را <strong>امضا</strong> کنید: <code>HMAC-SHA256(JWT_SECRET, payload)</code> و در دیکد verify کنید (مثل <code>dashboardSession.js</code>).</li>
+<li><code>upstreamBase</code> را هرگز از کلاینت نگیرید؛ آن را در <strong>حالت سرور</strong> (map با کلید state) نگه دارید، یا حداقل با allowlist دامنه‌های <code>*.xiaomi*</code> مقایسه کنید.</li>
+<li>این branch را به <code>isAuthenticated(request) === true</code> <strong>و</strong> <code>requireLogin !== false</code> مشروط کنید.</li>
+</ol>
+<hr>
+<h3>SEC-02 · API Keyها plaintext ذخیره و کامل برگردانده می‌شوند</h3>
+<p><strong>شدت: بالا (در سناریوی نشت فایل/بکاپ)</strong></p>
+<pre><code class="language-js">// src/lib/db/repos/apiKeysRepo.js:41-44
+db.run(`INSERT INTO apiKeys(id, key, name, …) VALUES(?, …)`, [apiKey.id, apiKey.key, …]);
+
+// :70-75 — مقایسه با جست‌وجوی مستقیم روی مقدار خام
+export async function validateApiKey(key) {
+  const row = db.get(`SELECT isActive FROM apiKeys WHERE key = ?`, [key]);
+</code></pre>
+<p>و <code>GET /api/keys</code> همهٔ کلیدها را با مقدار کامل برمی‌گرداند (<code>api/keys/route.js:9-12</code>). نتیجه:</p>
+<ul>
+<li>هر بکاپ/کپی از <code>jb-router.db</code>، هر <code>SELECT</code> تزریقی و هر دسترسی خواندنی به فایل = همهٔ کلیدهای گیت‌وی.</li>
+<li>کلیدها «recoverable» هستند، در حالی که گیت‌وی شما عملاً یک <strong>پروکسی به حساب‌های پولی کاربر</strong> است.</li>
+</ul>
+<p><strong>اصلاح:</strong> ذخیرهٔ <code>sha256(key)</code> (کلید آنتروپی بالاست، پس SHA-256 کافی است؛ bcrypt لازم نیست) + یک <code>keyPrefix</code> برای نمایش در UI (<code>sk-…a1b2</code>). شناسهٔ فعلی <code>sk-{machineId}-{keyId}-{crc8}</code> جالب است ولی چون <code>validateApiKey</code> به CRC تکیه نمی‌کند، عملاً بی‌اثر است.</p>
+<hr>
+<h3>SEC-03 · نبودِ rate-limit روی مسیر LLM</h3>
+<p><strong>شدت: بالا (ریسک هزینه/سوءاستفاده)</strong></p>
+<p>در کل مخزن، تنها محدودکنندهٔ نرخ، <code>src/lib/auth/loginLimiter.js</code> است (لاگین داشبورد). برای <code>/v1/chat/completions</code>، <code>/v1/embeddings</code>، <code>/v1/images/*</code>، <code>/v1/audio/*</code> هیچ سهمیه/پنجرهٔ زمانی/همزمانی‌سنجی وجود ندارد. با معماری فعلی:</p>
+<ul>
+<li>یک کلید لو‌رفته ⇒ استخراج نامحدود از حساب‌های متصل (هزینهٔ واقعی).</li>
+<li>حملهٔ loop ساده از سمت یک CLI ⇒ <code>429</code> بالادست، سپس <code>markAccountUnavailable</code> اکانت‌ها را قفل می‌کند و <strong>بقیهٔ کاربران هم از کار می‌افتند</strong> (self-DoS).</li>
+</ul>
+<p><strong>اصلاح:</strong> محدودیت per-key و per-IP (token bucket روی جدول/DO برای چنداینستنسی، یا in-memory برای تک‌اینستنس) + هدرهای <code>X-RateLimit-*</code> + سهمیهٔ روزانه/ماهانهٔ قابل تنظیم در <code>settings</code> (زیرساخت <code>usageRepo</code> از قبل وجود دارد). حداقلِ سریع: سقف همزمانی per connection.</p>
+<hr>
+<h3>SEC-04 · SSRF در مسیرهای اعتبارسنجی + TOCTOU</h3>
+<p><strong>شدت: متوسط · بردار: داشبورد احرازهویت‌شده</strong></p>
+<p><code>src/shared/utils/ssrfGuard.js</code> <strong>کیفیت بالایی</strong> دارد (پارس عددی IPv6، پوشش <code>::ffff:127.0.0.1</code> و <code>64:ff9b::/96</code>، نرمال‌سازی نقطهٔ انتهایی، بازاعتبارسنجی در هر ریدایرکت). اما فقط در ۳ نقطه استفاده شده:</p>
+<pre><code>src/sse/handlers/fetch.js:85                 ✅
+src/app/api/provider-nodes/validate:72       ✅ (فقط assertPublicUrl، بدون DNS)
+src/app/api/cli-tools/cowork-mcp-tools:95    ✅ (فقط assertPublicUrl)
+</code></pre>
+<p>و استفاده <strong>نشده</strong> در جاهایی که کاربر «آدرس دلخواه» می‌دهد و سرور آن را <code>fetch</code> می‌کند:</p>
+<pre><code>src/app/api/providers/validate/route.js:41, 75, 107, 124, 135, 162, 192, 222   ❌
+src/app/api/settings/proxy-test/route.js  → lib/network/proxyTest.js:59        ❌
+src/app/api/proxy-pools/[id]/test/route.js:11                                  ❌
+</code></pre>
+<p>یعنی هر کسی که به داشبورد دسترسی دارد (یا در حالت <code>requireLogin=false</code>، هر کسی در شبکه) می‌تواند <code>baseUrl = http://10.0.0.5:8080</code> بدهد و ببیند پاسخ چه می‌شود (پاسخ کامل یا پیام خطای متمایز = oracle). علاوه بر آن، در <code>assertPublicUrlResolved</code> بین <code>dns.lookup</code> و <code>fetch</code> یک پنجرهٔ <strong>DNS rebinding</strong> وجود دارد (TOCTOU): مهاجم TTL=0 می‌دهد، بار اول IP عمومی، بار دوم <code>127.0.0.1</code>.</p>
+<p><strong>اصلاح:</strong> ۱) همهٔ fetchهای «URL کاربر» را به <code>fetchPublic()</code> منتقل کنید. ۲) برای بستن TOCTOU، IP معتبرسنجی‌شده را pin کنید (undici <code>Agent</code> با <code>connect.lookup</code>) یا حداقل بعد از <code>fetch</code>، <code>response.url</code> و ریدایرکت‌ها را مجدداً بررسی کنید. ۳) <code>assertPublicUrl</code> سینک را فقط برای UX بگذارید، نه به‌عنوان کنترل امنیتی. ۴) بازه‌های <code>192.0.0.0/24</code>, <code>198.18.0.0/15</code>, <code>224.0.0.0/4</code>, <code>240.0.0.0/4</code> هم به لیست اضافه شوند.</p>
+<hr>
+<h3>SEC-05 · <code>killAppProcesses()</code> کورکورانه پروسه می‌کشد</h3>
+<p><strong>شدت: متوسط (تخریب داده/از دست رفتن کار کاربر)</strong></p>
+<pre><code class="language-js">// src/lib/appUpdater.js:78-95
+const output = execSync(&quot;ps aux&quot;, …);
+output.split(&quot;\n&quot;).forEach(line =&gt; {
+  const isAppProcess = line.includes(&quot;jb-router&quot;) || line.includes(&quot;next-server&quot;) || line.includes(&quot;cli.js&quot;);
+  …
+});
+// سپس :140-155
+execSync(`kill -9 ${pid} 2&gt;/dev/null`, …)
+</code></pre>
+<p><code>ps aux</code> کل خط فرمان را چاپ می‌کند. پس هر پروسه‌ای که در argv آن رشتهٔ <code>jb-router</code> باشد قربانی می‌شود: <code>vim ~/JB-Router/README.md</code>، <code>tail -f ~/.jb-router/logs</code>، یک <code>ssh</code> به سروری با آن مسیر، یک <code>docker run … jb-router</code>. همچنین <code>next-server</code> و <code>cli.js</code> بسیار عمومی هستند (هر Next.js دیگر روی همان ماشین!). و <code>pid</code> از <code>ps</code> گرفته شده و با <code>shell: true</code> داخل دستور تزریق می‌شود.</p>
+<p><strong>اصلاح:</strong> پروسه‌ها را با <strong>PID file</strong> یا <code>pgrep -f</code> با الگوی کامل مسیر نصب خودتان و تأیید مسیر باینری (<code>/proc/&lt;pid&gt;/exe</code>) شناسایی کنید؛ هرگز با substring عمومی. <code>pid</code> را با <code>Number.isSafeInteger</code> اعتبارسنجی و بدون <code>shell</code> اجرا کنید.</p>
+<hr>
+<h3>SEC-06 · قفل‌شدن لاگین با باکت «unknown»</h3>
+<p><strong>شدت: متوسط (DoS) · <code>lib/auth/loginLimiter.js:49-64</code></strong></p>
+<pre><code class="language-js">// Direct exposure without custom-server: single bucket so spoofed XFF
+// rotation cannot escape the limiter.
+return &quot;unknown&quot;;
+</code></pre>
+<p>طراحی «fail-safe» است (جلوگیری از فرار مهاجم با چرخش XFF) اما نتیجه‌اش این است: در هر استقرار بدون <code>custom-server.js</code> (مثلاً <code>next start</code>، Docker بدون entrypoint درست، یا روی Cloudflare Workers که <code>x-jb-router-peer-token</code> ندارد)، <strong>همهٔ کاربران یک باکت مشترک دارند</strong>. مهاجم با ۵ رمز غلط، ۳۰ ثانیه بعد ۲ دقیقه، … تا <strong>۳۰ دقیقه</strong> همه را قفل می‌کند. روی Workers اصلاً حافظهٔ مشترک پایدار وجود ندارد ⇒ limiter عملاً بی‌اثر است (و برعکس، اگر per-isolate باشد، بی‌فایده).</p>
+<p><strong>اصلاح:</strong> باکت را روی <code>(ip, username-less)</code> بگذارید و «unknown» را با یک شمارندهٔ سبک‌تر (مثلاً exponential delay به‌جای lock کامل) مدیریت کنید؛ برای Workers/Durable Object از همان DO به‌عنوان store استفاده کنید. توضیح در <code>.env.example</code> که <code>TRUST_PROXY</code> چه اثری دارد هم لازم است.</p>
+<hr>
+<h3>SEC-07 · تولید کلید و HMAC با مقادیر پیش‌فرض قابل پیش‌بینی</h3>
+<p><strong><code>src/shared/utils/apiKey.js</code></strong></p>
+<pre><code class="language-js">const API_KEY_SECRET = process.env.API_KEY_SECRET || &quot;endpoint-proxy-api-key-secret&quot;; // :3
+for (let i = 0; i &lt; 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length)); // :12
+</code></pre>
+<ul>
+<li><code>Math.random()</code> قابل پیش‌بینی است (وضعیت PRNG قابل بازسازی) — برای <code>keyId</code> که داخل کلید قرار می‌گیرد، باید <code>crypto.randomBytes</code> باشد.</li>
+<li>سکرت پیش‌فرض ⇒ CRC8 قابل جعل. امروز <code>validateApiKey</code> به CRC تکیه نمی‌کند (خوشبختانه)، ولی <code>parseApiKey</code> این قرارداد را جا می‌اندازد؛ هر بازنویسی آیندهٔ احراز هویت روی همین CRC، یک احراز هویت جعلی می‌شود.</li>
+<li><code>API_KEY_SECRET</code> در <code>.env.example</code> به‌عنوان «recommended security» آمده اما اگر تنظیم نشود، بی‌صدا پیش‌فرض می‌گیرد.</li>
+</ul>
+<p><strong>اصلاح:</strong> <code>crypto.randomBytes</code> + اگر <code>API_KEY_SECRET</code> تنظیم نشده، در استارتاپ هشدار بده (یا از <code>JWT_SECRET</code> مشتق کن).</p>
+<hr>
+<h3>SEC-08 · مسیر <code>h2c</code> بدنهٔ نامحدود را در حافظه جمع می‌کند</h3>
+<p><strong><code>custom-server.js:87-119</code></strong></p>
+<pre><code class="language-js">const contentLength = Number(req.headers[&quot;content-length&quot;] || 0);
+…
+let chunks = [head]; received = head.length;
+socket.on(&quot;data&quot;, chunk =&gt; { chunks.push(chunk); received += chunk.length; if (received &lt; contentLength) return; … });
+</code></pre>
+<p>هیچ سقفی روی <code>contentLength</code> نیست و <code>chunked</code> هم پشتیبانی نمی‌شود (پس <code>content-length</code> جعلی بزرگ ⇒ انتظار بی‌پایان + رشد حافظه). به‌علاوه سوکت بدون timeout می‌ماند. (بقیهٔ این فایل، از جمله پاک‌سازی XFF و peer-token، <strong>عالی</strong> است.)</p>
+<p><strong>اصلاح:</strong> سقف سخت (مثلاً همان <code>proxyClientMaxBodySize</code>)، timeout روی سوکت، و بازگرداندن <code>413</code>.</p>
+<hr>
+<h3>SEC-09/10/11 · موارد کم‌شدت</h3>
+<ul>
+<li><strong>SEC-09:</strong> <code>password === initialPassword</code> و <code>verifyDashboardPassword</code> غیر constant-time. از <code>crypto.timingSafeEqual</code> روی digest استفاده کنید.</li>
+<li><strong>SEC-10:</strong> ده‌ها route در <code>catch</code> مقدار <code>error.message</code> را به کلاینت برمی‌گردانند (مثلاً <code>api/settings/route.js:29</code>). پیام‌های SQLite/driver مسیر فایل را لو می‌دهند. یک <code>toPublicError()</code> بسازید.</li>
+<li><strong>SEC-11:</strong> <code>getCliToken()</code> مقدار را در <code>cachedCliToken</code> <strong>سراسری</strong> کش می‌کند و با <code>===</code> مقایسه می‌کند؛ اگر <code>MACHINE_ID_SALT</code>/فایل تغییر کند تا ری‌استارت به‌روز نمی‌شود.</li>
+</ul>
+<h3>یک نکتهٔ مثبت که باید بماند</h3>
+<p><code>custom-server.js</code> + <code>trustedPeer.js</code> (توکن per-process برای اثبات اینکه هدر <code>x-jb-router-real-ip</code> واقعاً از سوکت آمده) طراحی <strong>درست و کمیاب</strong> برای مسئلهٔ IP spoofing است. همین‌طور <code>dashboardGuard.js</code> با منطق «deny-by-default برای <code>/api/*</code>» و لیست <code>LOCAL_ONLY_PATHS</code> برای مسیرهای spawn/سکرت‌خوان — این‌ها را با هیچ بازنویسی‌ای از دست ندهید.</p>
+<hr>
+<h2 id="۵.-باگ‌ها-و-مسائل-صحت">۵. باگ‌ها و مسائل صحت</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>شدت</th>
+<th>عنوان</th>
+<th>محل</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BUG-01</td>
+<td>متوسط</td>
+<td>منطق combo <strong>دو بار</strong> نوشته شده (۵۰ خط) → واگرایی</td>
+<td><code>src/sse/handlers/chat.js:96-140</code> و <code>:171-217</code></td>
+</tr>
+<tr>
+<td>BUG-02</td>
+<td>متوسط</td>
+<td>بعد از refresh توکن، <code>providerHeaders</code>/<code>finalBody</code> به‌روز نمی‌شود</td>
+<td><code>open-sse/handlers/chatCore.js:442-457</code></td>
+</tr>
+<tr>
+<td>BUG-03</td>
+<td>متوسط</td>
+<td><code>.catch(() =&gt; {})</code> در ۴۲ فایل/۸۴ مورد ⇒ شکست‌های بی‌صدا</td>
+<td>نمونه: <code>chatCore.js:264,397,407,471,481</code></td>
+</tr>
+<tr>
+<td>BUG-04</td>
+<td>متوسط</td>
+<td>۱۵۸ <code>catch {}</code> خالی؛ ۳۰ مورد فقط در <code>rtk/systemInject.js</code></td>
+<td><code>open-sse/rtk/systemInject.js</code></td>
+</tr>
+<tr>
+<td>BUG-05</td>
+<td>کم-متوسط</td>
+<td><code>getSettings()</code> ۲ تا ۳ بار در هر درخواست چت + در <code>auth.js</code></td>
+<td><code>chat.js:71,174,269</code></td>
+</tr>
+<tr>
+<td>BUG-06</td>
+<td>کم</td>
+<td><code>while (true)</code> بدون سقف تکرار در حلقهٔ fallback</td>
+<td><code>chat.js:234-341</code></td>
+</tr>
+<tr>
+<td>BUG-07</td>
+<td>کم</td>
+<td>دو ماژول <code>machineId</code> با نمک پیش‌فرض متفاوت</td>
+<td><code>src/shared/utils/machineId.js</code> vs <code>open-sse/shared/machineId.js</code></td>
+</tr>
+<tr>
+<td>BUG-08</td>
+<td>کم</td>
+<td><code>REQUIRE_API_KEY</code> در <code>.env.example</code> هست، در کد <strong>۰</strong> استفاده</td>
+<td><code>.env.example</code></td>
+</tr>
+<tr>
+<td>BUG-09</td>
+<td>کم</td>
+<td><code>console.log</code> مستقیم (۶۷۵ مورد) که لاگر سطح‌دار را دور می‌زند</td>
+<td>۱۶۵ فایل</td>
+</tr>
+</tbody></table>
+<h3>BUG-01 · تکرار منطق combo</h3>
+<p><code>handleChat</code> (خط ۹۶–۱۴۰) و <code>handleSingleModelChat</code> (خط ۱۷۱–۲۱۷) هر دو <strong>عیناً</strong> یک بلوک ۵۰ خطی دارند: خواندن <code>comboStrategies</code>، انتخاب <code>fusion</code> vs <code>fallback</code>، <code>augmentModelsWithCapacityAdapter</code>، و ساخت <code>cleanRawReq</code> با حذف <code>tools</code>/<code>tool_choice</code>. این یک کلاس باگ کلاسیک است: کسی یکی را اصلاح می‌کند و دیگری عقب می‌ماند — که همین حالا هم یک تفاوت ریز دارد (در نسخهٔ دوم <code>chatSettings</code> از قبل خوانده شده، در نسخهٔ اول <code>settings</code> از <code>getSettings()</code> بالاتر می‌آید).
+<strong>اصلاح:</strong> یک تابع <code>resolveCombo({ modelStr, body, settings, request, apiKey, clientRawRequest })</code> که هر دو مسیر از آن استفاده کنند.</p>
+<h3>BUG-02 · فراموشی به‌روزرسانی متغیرهای تلمتری در retry</h3>
+<pre><code class="language-js">// chatCore.js:442-457
+const retryResult = await executor.execute({ … });
+if (retryResult.response.ok) {
+  providerResponse = retryResult.response;
+  providerUrl = retryResult.url;
+  providerResponseFormat = retryResult.responseFormat || targetFormat;
+  // ❌ providerHeaders و finalBody به‌روز نمی‌شوند
+}
+</code></pre>
+<p>اثر: در «Request details» داشبورد و لاگ‌ها، هدرها و بدنهٔ <strong>درخواست ناموفق</strong> (که قبل از refresh ارسال شده) نمایش داده می‌شود؛ اگر <code>translatedBody</code> هم بازسازی شده باشد، دیباگ گمراه‌کننده می‌شود.</p>
+<h3>BUG-03/04 · بلعیدن خطا</h3>
+<p><code>158</code> مورد <code>catch {}</code> و <code>84</code> مورد <code>.catch(() =&gt; {})</code>. بیشترشان «fail-open» عامدانه‌اند (که در <code>rtk</code> مستند شده و درست است)، اما در مسیرهای <strong>نوشتن داده</strong> هم هستند:</p>
+<pre><code class="language-js">// chatCore.js — نوشتن usage/telemetry در خطاها هم بی‌صدا رد می‌شود
+appendRequestLog({ … }).catch(() =&gt; { });
+saveRequestDetail(buildRequestDetail({ … })).catch(() =&gt; { });
+</code></pre>
+<p>یعنی اگر SQLite قفل شود یا دیسک پر باشد، <strong>آمار مصرف شما بی‌صدا صفر می‌شود</strong> و هیچ‌کس نمی‌فهمد. حداقل یک شمارندهٔ «dropped logs» + لاگ با <code>LOG_LEVEL=error</code> لازم است.</p>
+<h3>BUG-07 · دو <code>machineId</code> جدا</h3>
+<ul>
+<li><code>src/shared/utils/machineId.js</code>: فایل <code>DATA_DIR/machine-id</code> + <code>cli-secret</code>، پشتیبانی Workers از <code>JWT_SECRET</code>، <code>getConsistentMachineId(salt=null)</code>.</li>
+<li><code>open-sse/shared/machineId.js</code>: نسخهٔ ساده‌تر، نمک پیش‌فرض <code>&quot;endpoint-proxy-salt&quot;</code>، بدون persistence.</li>
+</ul>
+<p>همین دو تابع در <code>dashboardGuard.js</code> (توکن CLI) و <code>open-sse/executors/grok-cli.js</code> و <code>api/keys/route.js</code> استفاده می‌شوند. اگر مقدارها متفاوت دربیایند، توکن CLI و machineId داخل کلید API با هم نمی‌خوانند. <strong>اصلاح:</strong> یکی را حذف و از یک منبع مشترک import کنید.</p>
+<hr>
+<h2 id="۶.-معماری-و-طراحی">۶. معماری و طراحی</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>موضوع</th>
+<th>توضیح</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ARCH-01</td>
+<td><strong>مرز <code>open-sse</code> ↔ <code>src</code> شکسته شده</strong></td>
+<td><code>open-sse/handlers/chatCore.js:14</code> مستقیم از <code>@/lib/usageDb.js</code> (لایهٔ اپ) import می‌کند. یعنی «موتور مستقل قابل استفاده به‌تنهایی» که در CLAUDE.md ادعا شده، واقعاً مستقل نیست.</td>
+</tr>
+<tr>
+<td>ARCH-02</td>
+<td><strong>۴ محیط اجرا، یک کد</strong></td>
+<td>Node / Bun / Workers(DO) / CLI-npm. نتیجه: <code>if (navigator.userAgent === &quot;Cloudflare-Workers&quot;)</code> در <code>dashboardSession.js:14</code>، <code>machineId.js:18,44</code>، <code>driver.js:4</code> … — این شاخه‌ها تست‌پذیر نیستند و در Node هرگز اجرا نمی‌شوند.</td>
+</tr>
+<tr>
+<td>ARCH-03</td>
+<td><strong>بدون TypeScript</strong> در ۱۴۶k خط + بدون اعتبارسنجی runtime روی payload ارائه‌دهنده‌ها</td>
+<td>شکل پاسخ ۴۰+ ارائه‌دهنده با <code>as any</code>-گونه دسترسی آزاد خوانده می‌شود (<code>response.choices?.[0]?.message?.content</code>). یک لایهٔ schema (zod/valibot) فقط برای مرزهای بیرونی، بیشترین بازده را دارد.</td>
+</tr>
+<tr>
+<td>ARCH-04</td>
+<td><strong>کامپوننت‌های غول</strong></td>
+<td><code>dashboard/providers/[id]/page.js</code> = ۱٬۹۵۵ خط، <code>profile/page.js</code> = ۱٬۷۰۳، <code>ProviderLimits/index.js</code> = ۱٬۵۵۴، <code>combos/page.js</code> = ۱٬۱۴۳.</td>
+</tr>
+<tr>
+<td>ARCH-05</td>
+<td><strong>۲۶ کارت CLI تکراری</strong></td>
+<td><code>dashboard/cli-tools/components/*ToolCard.js</code> — ۱۵+ بلوک JSX عیناً در ۱۲–۱۴ فایل تکرار شده (تشخیص clone: <code>x14</code>). باید یک <code>ToolCard</code> جنریک + یک رجیستری config باشد.</td>
+</tr>
+<tr>
+<td>ARCH-06</td>
+<td><strong>۱۲۵ فایل registry تولیدشده</strong></td>
+<td><code>open-sse/providers/registry/*</code> با اسکریپت auto-generate. کار درستی است، اما <code>index.js</code> نباید دستی ویرایش شود و این قاعده فقط در مستندات است، نه در CI.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="۷.-کیفیت-کد-و-نگهداشت">۷. کیفیت کد و نگهداشت</h2>
+<p><strong>ESLint (اجرای واقعی روی کل مخزن):</strong> ۳۴۵ پیام در ۲۲۴ فایل</p>
+<table>
+<thead>
+<tr>
+<th>قاعده</th>
+<th>تعداد</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>import/no-anonymous-default-export</code></td>
+<td>۱۶۰</td>
+</tr>
+<tr>
+<td><code>react-hooks/set-state-in-effect</code></td>
+<td>۹۱</td>
+</tr>
+<tr>
+<td><code>react-hooks/immutability</code></td>
+<td>۳۸</td>
+</tr>
+<tr>
+<td><code>react-hooks/exhaustive-deps</code></td>
+<td>۳۲</td>
+</tr>
+<tr>
+<td><code>@next/next/no-img-element</code></td>
+<td>۱۰</td>
+</tr>
+<tr>
+<td><code>react-hooks/purity</code></td>
+<td>۶</td>
+</tr>
+<tr>
+<td><code>react/no-unescaped-entities</code></td>
+<td>۳</td>
+</tr>
+<tr>
+<td><code>react-hooks/refs</code></td>
+<td>۲</td>
+</tr>
+<tr>
+<td>دستور <code>eslint-disable</code> <strong>بی‌مصرف</strong></td>
+<td>۲</td>
+</tr>
+</tbody></table>
+<p><code>set-state-in-effect</code> ۹۱ بار یعنی الگوی «در effect داده بگیر و state بگذار» که ریسک رندر آبشاری و stale state دارد؛ <code>exhaustive-deps</code> ۳۲ بار یعنی closureهای کهنه (نمونه‌های مشخص: <code>cli-tools/*ToolCard.js:38-123</code>، <code>ProviderTopology.js:418,429,437</code>، <code>ModelSelectModal.js:431,468</code>، <code>ConnectionRow.js:112</code>).</p>
+<p><strong>شاخص‌های دیگر (اسکن کامل):</strong></p>
+<table>
+<thead>
+<tr>
+<th>شاخص</th>
+<th>تعداد</th>
+<th>فایل‌ها</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>console.log/debug</code></td>
+<td>۶۷۵</td>
+<td>۱۶۵</td>
+</tr>
+<tr>
+<td><code>catch {}</code> خالی</td>
+<td>۱۵۸</td>
+<td>۴۹</td>
+</tr>
+<tr>
+<td><code>.catch(() =&gt; {})</code></td>
+<td>۸۴</td>
+<td>۴۲</td>
+</tr>
+<tr>
+<td>برابری سست <code>==</code></td>
+<td>۱۱۱</td>
+<td>۶۷</td>
+</tr>
+<tr>
+<td><code>JSON.parse</code> (بیشتر بدون try)</td>
+<td>۳۵۶</td>
+<td>۲۰۷</td>
+</tr>
+<tr>
+<td><code>eval</code>/<code>new Function</code></td>
+<td>۱</td>
+<td>۱ (<code>scripts/injectDisplayToRegistry.mjs</code> — فقط اسکریپت build)</td>
+</tr>
+<tr>
+<td><code>dangerouslySetInnerHTML</code></td>
+<td>۳</td>
+<td>۲</td>
+</tr>
+<tr>
+<td><code>var</code></td>
+<td>۲</td>
+<td>۱</td>
+</tr>
+<tr>
+<td>TODO/FIXME</td>
+<td>۲</td>
+<td>۲</td>
+</tr>
+</tbody></table>
+<p>نکتهٔ خوب: <code>dangerouslySetInnerHTML</code> فقط ۳ بار و <code>eval</code> فقط در اسکریپت build — سطح XSS سمت کلاینت پایین است. <code>npm audit</code> هم <code>dompurify</code> را high اعلام می‌کند؛ ببینید کجا استفاده می‌شود (احتمالاً رندر markdown) و نگه‌داری همان ۳ نقطه را جدی بگیرید.</p>
+<hr>
+<h2 id="۸.-کارایی-و-مقیاس‌پذیری">۸. کارایی و مقیاس‌پذیری</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>موضوع</th>
+<th>جزئیات</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PERF-01</td>
+<td><strong>mutex سراسری انتخاب اکانت</strong></td>
+<td><code>src/sse/services/auth.js:11-46</code>: یک زنجیرهٔ Promise ماژول‌سطح، <code>getProviderCredentials</code> را برای <strong>همهٔ ارائه‌دهنده‌ها</strong> سریال می‌کند. زیر بار ۵۰ درخواست همزمان، همه صف می‌کشند حتی اگر به ۵ پروایدر مختلف بروند. باید per-provider باشد (<code>Map&lt;provider, Promise&gt;</code>).</td>
+</tr>
+<tr>
+<td>PERF-02</td>
+<td>خواندن مکرر تنظیمات</td>
+<td><code>getSettings()</code> در هر درخواست ۲–۳ بار (<code>chat.js:71,174,269</code>) + داخل <code>auth.js</code> + <code>tokenRefresh</code>. یک TTL cache (مثلاً ۱–۲ ثانیه) با invalidation روی <code>PATCH /api/settings</code> کافی است.</td>
+</tr>
+<tr>
+<td>PERF-03</td>
+<td><code>SELECT *</code> + مرتب‌سازی در JS</td>
+<td><code>connectionsRepo.js:92-101</code>: ایندکس‌های لازم وجود دارند (<code>idx_pc_provider_active</code>, <code>idx_uh_ts</code>, <code>idx_ak_key</code> — <code>schema.js:48-152</code> ✅)، اما کوئری کل ردیف‌ها (<code>SELECT *</code>) را می‌آورد و <code>priority</code> را در جاوااسکریپت sort می‌کند، برای <strong>هر</strong> انتخاب اکانت. یک <code>ORDER BY priority</code> + <code>SELECT</code> ستون‌های لازم کافی است.</td>
+</tr>
+<tr>
+<td>PERF-04</td>
+<td>الگوی read-modify-write روی JSON</td>
+<td><code>usageRepo</code> برای هر درخواست: <code>SELECT data FROM usageDaily</code> → تغییر → <code>UPSERT</code>. روی DO/یک اتصال SQLite این serial است و نقطهٔ گلوگاه می‌شود.</td>
+</tr>
+<tr>
+<td>PERF-05</td>
+<td>حافظهٔ درون‌پروسه‌ای برای state</td>
+<td><code>comboRotationState</code> (<code>combo.js:99</code>)، <code>cachedCliToken</code>، <code>selectionMutex</code>، کش quota و limiter — همه per-isolate؛ روی Workers با چند DO/چند ایزوله رفتار ناهمگون می‌دهند.</td>
+</tr>
+<tr>
+<td>PERF-06</td>
+<td>فایل‌های ۲۰۰۰ خطی و ثبت مجدد کل ماژول در HMR</td>
+<td>dev server کند؛ در <code>next.config.mjs</code> هم <code>watchOptions.ignored</code> برای کاهش اینوتایف اضافه شده که نشان می‌دهد واقعاً مشکل بوده.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="۹.-تست،-CI-و-انتشار">۹. تست، CI و انتشار</h2>
+<ul>
+<li><strong>۲۸۱ فایل تست / ۴۱٬۸۲۱ خط</strong> (۲۲٪ نسبت به کد سورس) — پوشش ترجمه‌گرها و پروایدرها خوب است (۲۵۳ فایل <code>tests/unit</code> + ۲۷ فایل <code>tests/translator</code>).</li>
+<li><strong>آماری که خودتان در CLAUDE.md نوشته‌اید</strong>: «سوییت لزوماً سبز نیست: ~۹۳۸ پاس، ~۶۴ فیل» و مقایسه با <code>tests/__baseline__/known-fails.txt</code>. این صادقانه است، اما پیامدش این است که <strong>تست‌ها نمی‌توانند به‌عنوان گیت عمل کنند</strong>.</li>
+<li><strong>هیچ CI‌ای lint/test را اجرا نمی‌کند.</strong> سه workflow موجود: <code>deploy-deployer.yml</code>، <code>gitbook-pages.yml</code>، <code>publish-cli.yml</code> — همه manual و هیچ‌کدام <code>npm test</code>/<code>npx eslint</code> ندارند. یعنی:<ul>
+<li>همین ۳۴۵ خطای ESLint هرگز دیده نمی‌شوند.</li>
+<li>یک PR می‌تواند ۴۰ تست را بشکند و merge شود.</li>
+</ul>
+</li>
+<li>تست E2E فقط <code>tests/workers-smoke.mjs</code> است (smoke روی Worker زنده).</li>
+</ul>
+<p><strong>اصلاح پیشنهادی (کم‌هزینه، بازده بالا):</strong></p>
+<pre><code class="language-yaml"># .github/workflows/ci.yml
+on: [push, pull_request]
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: npx eslint . --max-warnings=0   # با baseline کم‌کم سخت‌تر کنید
+      - run: cd tests &amp;&amp; npm i &amp;&amp; npx vitest run --reporter=dot
+        continue-on-error: false            # بعد از پاک‌سازی known-fails
+      - run: node tests/__baseline__/verify-no-regression.mjs
+</code></pre>
+<hr>
+<h2 id="۱۰.-وابستگی‌ها">۱۰. وابستگی‌ها</h2>
+<p><code>npm audit --omit=dev</code> → <strong>۱۱ آسیب‌پذیری: ۱ critical، ۷ high، ۳ moderate</strong></p>
+<table>
+<thead>
+<tr>
+<th>پکیج</th>
+<th>شدت</th>
+<th>چرا برای شما مهم است</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>next</code></td>
+<td><strong>critical</strong></td>
+<td>cache poisoning SSG/ISR در self-hosted + نشت Draft Mode. شما <code>output: &quot;standalone&quot;</code> و self-host هستید ⇒ <strong>در معرض</strong>. اولویت اول آپدیت.</td>
+</tr>
+<tr>
+<td><code>undici</code></td>
+<td>high (۸ بولتن)</td>
+<td>موتور اصلی <code>fetch</code> شما (<code>proxyFetch.js</code>, <code>proxyTest.js</code>, <code>proxy-pools/[id]/test</code>): DoS در EventSource parser، <strong>bypass اعتبارسنجی TLS در صورت drop شدن tls options در Agent</strong>، cache poisoning با ریدایرکت cross-origin. برای پروکسی‌ای که TLS را به ۴۰ پروایدر می‌زند، مهم است.</td>
+</tr>
+<tr>
+<td><code>dompurify</code></td>
+<td>high</td>
+<td>XSS در مسیر رندر HTML (تست‌های سینتکس/ترجمه).</td>
+</tr>
+<tr>
+<td><code>node-forge</code></td>
+<td>high</td>
+<td>پذیرش امضای RSA با پارامترهای اضافی — مربوط به MITM CA شما (<code>src/mitm/cert</code>).</td>
+</tr>
+<tr>
+<td><code>sharp</code></td>
+<td>high</td>
+<td>فقط اگر optimize images؛ شما <code>images.unoptimized: true</code> دارید ⇒ ریسک کم.</td>
+</tr>
+<tr>
+<td><code>body-parser</code>, <code>follow-redirects</code>, <code>source-map-js</code></td>
+<td>high</td>
+<td>غیرمستقیم (express/CLI/dev).</td>
+</tr>
+</tbody></table>
+<p><strong>اصلاح:</strong> <code>npm audit fix</code> برای موارد non-breaking؛ برای <code>next</code> و <code>undici</code> آپدیت مینور صریح بزنید، بعد <code>npm run build</code> و <code>workers:build</code> را تست کنید (چون <code>serverExternalPackages</code> و OpenNext به نسخه‌ها حساس‌اند). یک <code>dependabot.yml</code> با گروه‌بندی minorها اضافه کنید.</p>
+<hr>
+<h2 id="۱۱.-مستندات-و-پیکربندی">۱۱. مستندات و پیکربندی</h2>
+<p><strong>نقاط قوت:</strong> <code>README.md</code>، <code>CLAUDE.md</code>، <code>docs/ARCHITECTURE.md</code>، <code>WORKERS.md</code>، <code>open-sse/AGENTS.md</code>، <code>DOCKER.md</code> — واقعاً از میانگین پروژه‌های متن‌باز بالاتر. کامنت‌های داخل کد هم اغلب «چرا» را توضیح می‌دهند نه «چه» (مثلاً <code>chatCore.js:42-50</code> دربارهٔ <code>encrypted_content</code>، یا <code>proxy.js:14-21</code>). این ارزشمند است و باید حفظ شود.</p>
+<p><strong>مشکلات:</strong></p>
+<ol>
+<li><strong>README با واقعیت نمی‌خواند:</strong> عنوان می‌گوید «running entirely on Cloudflare Workers» و «No server to run»، در حالی که مسیر اصلی توسعه و <code>npm start</code> یک Node server است و <code>custom-server.js</code> (که همهٔ محافظت‌های IP روی آن سوار است) روی Workers وجود ندارد. توضیح دهید کدام deployment «درجه‌یک» است.</li>
+<li><strong><code>.env.example</code> گمراه‌کننده:</strong> <code>REQUIRE_API_KEY</code> هیچ استفاده‌ای در کد ندارد (۰ مورد)؛ <code>OBSERVABILITY_ENABLED</code> فقط ۱ مورد؛ <code>MACHINE_ID_SALT</code> فقط ۱ مورد. یا پیاده کنید یا حذف.</li>
+<li><strong>هیچ راهنمای «سخت‌سازی برای اینترنت»</strong> نیست: چه چیزی باید تنظیم شود تا این اپ روی یک VPS عمومی امن باشد (<code>INITIAL_PASSWORD</code>, <code>AUTH_COOKIE_SECURE=true</code>, <code>requireApiKey</code>, reverse proxy + <code>TRUST_PROXY</code>, پشت Cloudflare Access). این باید یک صفحهٔ <code>SECURITY.md</code> عملی باشد (فایل <code>SECURITY.md</code> موجود است اما ۱٫۳KB و کلی).</li>
+<li><code>README.zh-CN.md</code> ۴۴KB و <code>README.md</code> ۹KB — یعنی نسخهٔ چینی از نسخهٔ اصلی جلوتر است؛ ریسک واگرایی مستندات.</li>
+</ol>
+<hr>
+<h2 id="۱۲.-بازبینی-خط‌به‌خط-ماژول‌های-هسته-(فایل‌به‌فایل)">۱۲. بازبینی خط‌به‌خط ماژول‌های هسته (فایل‌به‌فایل)</h2>
+<h3>۱۲.۱ <code>src/proxy.js</code> (۷۳ خط) — خوانده شد، کامل</h3>
+<ul>
+<li>✅ <code>matcher</code> درست، همه‌چیز جز assetها.</li>
+<li>⚠️ خط ۳۲–۳۷: لاگ <code>pathname</code> + ۸۰ کاراکتر از هدر cookie <strong>خام</strong> در <code>console.log</code> (<code>cookies.slice(0, 80)</code>). این می‌تواند <code>auth_token</code> را در لاگ بنویسد. باید redact شود.</li>
+<li>⚠️ SEC-01 (بالا).</li>
+<li>⚠️ سه بار <code>dashboardProxy(request)</code> در مسیرهای مختلف ⇒ دوبار اجرای منطق guard در برخی مسیرها (هزینهٔ DB + احتمال ناسازگاری).</li>
+</ul>
+<h3>۱۲.۲ <code>src/dashboardGuard.js</code> (۲۸۲ خط) — خوانده شد، کامل</h3>
+<ul>
+<li>✅ منطق «deny-by-default» + allowlist عمومی، درست.</li>
+<li>✅ <code>isLoopbackHostname</code> با پشتیبانی IPv6 و <code>::ffff:</code> — خوب.</li>
+<li>✅ <code>LOCAL_ONLY_PATHS</code> قبل از <code>ALWAYS_PROTECTED</code> بررسی می‌شود (ترتیب صحیح).</li>
+<li>⚠️ <code>pathname.startsWith(p)</code> برای LOCAL_ONLY: <code>/api/headroom/proxyXYZ</code> هم match می‌شود (بدون تأثیر امنیتی مثبت/منفی؛ اما <code>/api/mcp/</code> با اسلش انتهایی، <code>/api/mcp</code> را نمی‌گیرد).</li>
+<li>⚠️ <code>requireLogin === false</code> ⇒ <code>isAuthenticated()</code> برای <strong>همهٔ</strong> <code>/api/*</code> true می‌شود، از جمله <code>/api/providers</code> که سکرت‌های OAuth را برمی‌گرداند. اگر این تنظیم برای LAN است، حداقل به loopback محدودش کنید (مثل <code>canAccessLocalOnlyRoute</code>).</li>
+<li>⚠️ اگر <code>getSettings()</code> خطا بدهد (<code>loadSettings</code> → null) رفتار fail-open در <code>isAuthenticated</code> نیست (خوب) اما در بلوک <code>/dashboard</code> هم <code>requireLogin=true</code> پیش‌فرض می‌ماند (خوب).</li>
+<li>⚠️ <code>extractApiKey</code> کلید را از <code>?key=</code> هم می‌خواند (برای Gemini لازم است) — این کلید در لاگ دسترسی وب‌سرور می‌نشیند. در مستندات هشدار بدهید.</li>
+</ul>
+<h3>۱۲.۳ <code>src/sse/handlers/chat.js</code> (۳۴۲ خط) — خوانده شد، کامل</h3>
+<ul>
+<li>✅ ترتیب درست: <code>requireApiKey</code> → <code>handleBypassRequest</code> → combo → single.</li>
+<li>✅ <code>stripModelContextMarker</code> قبل از حل مدل (نکتهٔ ظریف و درست).</li>
+<li>⚠️ BUG-01 (تکرار ۵۰ خطی).</li>
+<li>⚠️ خط ۶۳–۶۸: <code>log.debug(&quot;AUTH&quot;, \</code>API Key: ${masked}`)` — ماسک شده، خوب است.</li>
+<li>⚠️ خط ۲۶۴: <code>updateProviderCredentials(...).catch(() =&gt; {})</code> — بی‌صدا.</li>
+<li>⚠️ <code>while (true)</code> + <code>excludeConnectionIds</code> — پایان‌پذیر است (هر دور یک اکانت حذف می‌شود) اما اگر <code>getProviderCredentials</code> با <code>noAuth</code> همیشه همان <code>id: &quot;noauth&quot;</code> را بدهد و <code>markAccountUnavailable</code> همیشه <code>shouldFallback=true</code> بدهد، <strong>حلقهٔ بی‌پایان</strong> ممکن است. یک <code>for (let attempt = 0; attempt &lt; MAX_ACCOUNTS; attempt++)</code> امن‌تر است.</li>
+<li>⚠️ خط ۳۲۸–۳۳۰: منطق <code>shouldFallback</code> برای antigravity، شرط سه‌گانه با <code>quotaResetMs</code> — کد درست اما بدون تست واحد مستقیم؛ مستحق تست است.</li>
+</ul>
+<h3>۱۲.۴ <code>open-sse/handlers/chatCore.js</code> (۵۱۷ خط) — خوانده شد</h3>
+<ul>
+<li>✅ ترتیب: format detect → bypass → transport/format resolution → thinking override → token savers → translate → execute → refresh/retry → stream.</li>
+<li>✅ خط ۱۰۷–۱۱۷: تزریق <code>providerThinking</code> فقط اگر کلاینت تنظیم نکرده — درست.</li>
+<li>⚠️ خط ۱۱۰ و ۱۳۰: <code>console.log</code> مستقیم در مسیر داغ (به‌جای <code>log</code>).</li>
+<li>⚠️ خط ۱۲۶–۱۲۸: RTK قبل از ترجمه فقط برای cursor — کامنت توضیح داده چرا؛ خوب. اما <code>preTranslateRtk</code> هیچ‌وقت <code>stripContinuityFields</code> نمی‌گیرد.</li>
+<li>⚠️ BUG-02 (retry).</li>
+<li>⚠️ خط ۴۲۱: شرط <code>!executor.noAuth &amp;&amp; (401||403)</code> — اگر refresh موفق شود ولی <code>retryResult.response</code> هم 401 باشد، <code>providerResponse</code> همان 401 می‌ماند و به fallback می‌رود (درست)، اما <code>providerHeaders/finalBody</code> قدیمی می‌مانند.</li>
+<li>⚠️ خط ۴۹۷–۵۰۰: مسیر <code>forcedSSEToJson</code> — اگر <code>result</code> falsy باشد، به <code>nonStreaming</code> می‌افتد؛ رفتار درست اما مستند نشده.</li>
+<li>✅ <code>isTokenExpiringSoon</code> با بافر ۵ دقیقه — منطقی.</li>
+</ul>
+<h3>۱۲.۵ <code>open-sse/executors/default.js</code> — خوانده شد (بخش اصلی)</h3>
+<ul>
+<li>✅ طراحی descriptor-based برای auth header (<code>auth.combined/apiKey/oauth</code>) و hooks — تمیز و DRY.</li>
+<li>✅ <code>applyJsonSchemaFallback</code> برای پروایدرهای بدون Structured Output — ترفند درست.</li>
+<li>⚠️ خط ۲۹: کامنت خودتان می‌گوید «legacy: noAuth → <code>Bearer undefined</code>». این یعنی اگر credential ناقص باشد، رشتهٔ <code>Bearer undefined</code> به بالادست می‌رود؛ به‌جای آن throw کنید.</li>
+<li>⚠️ <code>buildUrl</code> برای <code>openai-compatible-*</code> هرگز <code>assertPublicUrl</code> ندارد ⇒ SEC-04 (هر <code>baseUrl</code> کاربر).</li>
+<li>⚠️ خط ۱۳۰–۱۳۴: <code>throw</code> داخل <code>buildUrl</code> برای <code>accountId</code> غایب — این throw در مسیر <code>execute</code> گرفتار می‌شود و به 502 تبدیل می‌شود؛ پیام برای کاربر مبهم است. بهتر است 400/500 با پیام «accountId لازم است» باشد.</li>
+</ul>
+<h3>۱۲.۶ <code>open-sse/services/combo.js</code> — خوانده شد (نیمهٔ اول)</h3>
+<ul>
+<li>✅ <code>reorderByCapabilities</code> با tier logic و <strong>sort پایدار</strong> و بازگرداندن آرایهٔ اصلی وقتی تغییری نیست — کد باکیفیت.</li>
+<li>✅ <code>flattenToolHistory</code> برای مدل‌های panel — دقیق.</li>
+<li>⚠️ <code>comboRotationState</code> (Map ماژول‌سطح) ⇒ PERF-05.</li>
+<li>⚠️ <code>handleComboChat</code> ۲۶۷ خط است؛ باید به <code>selectNextModel</code> / <code>executeWithFallback</code> / <code>aggregateResult</code> شکسته شود.</li>
+</ul>
+<h3>۱۲.۷ <code>src/sse/services/auth.js</code> (≈۴۳۰ خط) — خوانده شد (بخش اصلی)</h3>
+<ul>
+<li>✅ ایدهٔ mutex برای جلوگیری از race انتخاب اکانت درست است، <strong>پیاده‌سازی خیلی درشت است</strong> (PERF-01).</li>
+<li>✅ فیلترهای <code>isModelLockActive</code> + کش quota antigravity + <code>ignoreModelLocks</code> برای probe — منطق بالغ.</li>
+<li>⚠️ خط ۵۵–۸۵: برای FREE_PROVIDERS هر بار <code>getSettings()</code> + <code>getProxyPools()</code> — در مسیر داغ.</li>
+<li>⚠️ <code>selectionMutex</code> هرگز ریست نمی‌شود اگر یک <code>await</code> هرگز resolve نشود (بدون timeout) ⇒ قفل دائمی همهٔ درخواست‌ها. یک <code>Promise.race</code> با timeout بگذارید.</li>
+</ul>
+<h3>۱۲.۸ <code>src/shared/utils/ssrfGuard.js</code> (۲۱۵ خط) — خوانده شد، کامل</h3>
+<ul>
+<li>✅ از نظر فنی یکی از بهترین بخش‌های پروژه: پارس عددی IPv6، پوشش IPv4-mapped/NAT64/6to4-ish، نرمال‌سازی dot انتهایی، بازاعتبارسنجی ریدایرکت با <code>redirect: &quot;manual&quot;</code> و سقف hop.</li>
+<li>⚠️ TOCTOU با DNS (بالا).</li>
+<li>⚠️ بازه‌های گمشده (<code>192.0.0.0/24</code>, <code>198.18.0.0/15</code>, multicast/reserved).</li>
+<li>⚠️ فقط ۳ نقطهٔ استفاده ⇒ مشکل اصلی «پوشش» است نه «پیاده‌سازی».</li>
+</ul>
+<h3>۱۲.۹ <code>custom-server.js</code> (۱۳۹ خط) — خوانده شد، کامل</h3>
+<ul>
+<li>✅ پاک‌سازی XFF/X-Real-IP و تولید <code>x-jb-router-peer-token</code> per-process — طراحی ممتاز.</li>
+<li>⚠️ SEC-08 (<code>h2c</code> بدنهٔ نامحدود).</li>
+<li>⚠️ monkey-patch کردن <code>http.createServer</code> به‌صورت <strong>سراسری</strong> (<code>http.createServer = ...</code>) ⇒ هر کتابخانه‌ای که سرور خودش را می‌سازد هم تحت تأثیر است؛ شکننده در آپدیت Node.</li>
+<li>⚠️ خط ۱۳۵–۱۳۷: <code>process.argv</code> بازنویسی و <code>require(nextBin)</code> — اگر ساختار داخلی <code>next</code> تغییر کند (v16→v17)، بی‌صدا خراب می‌شود.</li>
+</ul>
+<h3>۱۲.۱۰ <code>src/lib/auth/*</code> (۵ فایل)</h3>
+<ul>
+<li><code>dashboardSession.js</code>: ✅ تولید <code>jwt-secret</code> با <code>mode 0o600</code> و <code>randomBytes(32)</code>؛ ✅ <code>httpOnly</code>, <code>sameSite:lax</code>, <code>secure</code> شرطی؛ ⚠️ مقایسهٔ رمز غیر constant-time؛ ⚠️ <code>SECRET</code> در <strong>زمان import</strong> محاسبه می‌شود ⇒ خواندن فایل در هر cold start (روی Workers throw می‌کند، درست).</li>
+<li><code>loginLimiter.js</code>: ✅ الگوی پله‌ای ۳۰s→۲m→10m→30m؛ ⚠️ SEC-06؛ ⚠️ بدون cleanup دورهای (<code>attempts</code> Map رشد می‌کند — لو رفتن حافظهٔ کوچک اما پایان‌ناپذیر).</li>
+<li><code>oidc.js</code>: ✅ PKCE + state + nonce تمیز؛ ⚠️ <code>getPublicOrigin</code> به <code>x-forwarded-host</code> اعتماد می‌کند ⇒ اگر پشت پروکسی اشتباه تنظیم‌شده باشد، <code>redirect_uri</code> قابل دستکاری است (host header injection در فلوی OAuth).</li>
+<li><code>saml.js</code>: ⚠️ <code>validateInResponseTo: &quot;never&quot;</code> در گزینه‌های node-saml اما بعداً <strong>دستی</strong> <code>InResponseTo</code> مقایسه می‌شود — این دوگانگی شکننده است؛ از قابلیت خود کتابخانه استفاده کنید. ⚠️ <code>DUMMY_FALLBACK_CERT</code> (<code>&quot;MIIC...DUMMY...&quot;</code>) به‌عنوان cert پیش‌فرض ⇒ اگر تنظیمات ناقص باشد، خطای گیج‌کننده می‌دهد؛ باید صریحاً throw کند.</li>
+<li><code>trustedPeer.js</code>: ✅ درست.</li>
+</ul>
+<h3>۱۲.۱۱ <code>src/lib/db/*</code> (۳٬۳۹۲ خط)</h3>
+<ul>
+<li>✅ SQL <strong>همه‌جا</strong> پارامتری است (<code>?</code>)؛ پویایی WHERE فقط از قطعات ثابت (<code>provider = ?</code>) ساخته می‌شود. <code>migrate.js:34,96</code> و <code>backup.js:56</code> نام جدول/ستون را interpolate می‌کنند اما از schema داخلی، نه ورودی کاربر ⇒ <strong>SQL Injection ندیدم</strong>. این نکتهٔ مهمی است.</li>
+<li>✅ زنجیرهٔ fallback درایور (bun → better-sqlite3 → node:sqlite → sql.js) واقع‌بینانه و خوب مستند شده.</li>
+<li>⚠️ <code>usageRepo.js</code> (۸۰۸ خط) بزرگ‌ترین ریسک نگهداشت در لایهٔ داده؛ read-modify-write JSON (PERF-04).</li>
+<li>⚠️ <code>db.transaction(() =&gt; …)</code> در <code>apiKeysRepo.js:51</code> synchronous است اما تابع <code>async</code> است ⇒ اگر آداپتور async باشد (sql.js)، تراکنش درست wrap نمی‌شود. الگوی <code>transaction</code> را برای همهٔ آداپتورها یکسان و async-آگاه کنید.</li>
+<li>⚠️ ایندکس‌ها: <code>schema.js</code> را ببینید — روی <code>providerConnections(provider,isActive)</code> و <code>usageHistory(timestamp)</code> ایندکس صریح لازم است (PERF-03).</li>
+</ul>
+<h3>۱۲.۱۲ <code>src/lib/mimoLoginSession.js</code> (۷۲۷ خط)</h3>
+<ul>
+<li>⚠️ SEC-01 (کوکی بدون امضا).</li>
+<li>⚠️ <code>loginFetch</code> با <code>AbortSignal.timeout(20000)</code> ولی بدون بازاعتبارسنجی ریدایرکت (<code>redirect: &quot;manual&quot;</code> هست، خوب).</li>
+<li>⚠️ فایل ۷۲۷ خطی که چند مسئولیت دارد (کپچر کوکی، پروکسی، takeover، attach) — باید شکسته شود.</li>
+</ul>
+<h3>۱۲.۱۳ <code>src/lib/appUpdater.js</code> + <code>src/lib/updater/updater.js</code></h3>
+<ul>
+<li>⚠️ SEC-05.</li>
+<li>✅ مکانیزم detached + <code>UPDATER_*</code> env و relaunch — عملی و درست.</li>
+<li>⚠️ <code>ensureRuntimeUpdater</code> فایل updater را در <code>DATA_DIR/runtime</code> کپی و بر اساس <strong>اندازه</strong> مقایسه می‌کند؛ اگر نسخهٔ جدید هم‌اندازه باشد، نسخهٔ قدیمی اجرا می‌شود. از hash استفاده کنید.</li>
+</ul>
+<h3>۱۲.۱۴ <code>open-sse/utils/streamHandler.js</code> + <code>streamingHandler.js</code></h3>
+<ul>
+<li>✅ <code>handleDisconnect</code> با تأخیر ۵۰۰ms قبل از <code>abort()</code> — طراحی درست برای flush شدن لاگ‌ها.</li>
+<li>✅ <code>createDisconnectAwareStream</code> <strong>pull-based</strong> است (<code>reader.read()</code> در <code>pull</code>) ⇒ backpressure واقعاً مدیریت می‌شود؛ این بخش را در بازنویسی خراب نکنید.</li>
+<li>✅ stall watchdog روی «بایت خام بالادست» اندازه‌گیری می‌شود نه خروجی transform — این تصمیم دقیقاً همان چیزی است که خطای «failed to pipe response» را در مدل‌های reasoning رفع می‌کند و نشان‌دهندهٔ دیباگ واقعی در Production است.</li>
+<li>⚠️ <code>writer.abort().catch(() =&gt; {})</code> و <code>reader.cancel().catch(() =&gt; {})</code> بدون انتظار — در محیط Workers ممکن است cleanup نیمه‌کاره بماند.</li>
+</ul>
+<h3>۱۲.۱۵ <code>src/app/api/**</code> (۱۶۶ فایل route)</h3>
+<ul>
+<li>✅ همهٔ routeها از یک دروازهٔ مرکزی (<code>proxy.js</code> + <code>dashboardGuard.js</code>) عبور می‌کنند؛ بنابراین «route بدون احراز هویت» که در اسکن اولیه دیده شد، در واقع پشت دروازه است. این الگو (auth در middleware نه در هر route) خوب است <strong>به شرطی</strong> که کسی مسیر جدید را به <code>PUBLIC_*</code> اضافه نکند؛ همین حالا ۱۰+ مسیر عمومی وجود دارد که هر کدام باید بازبینی شوند (همه OK بودند).</li>
+<li>⚠️ <code>/api/health</code> با <code>Access-Control-Allow-Origin: *</code> — بی‌خطر است اما الگوی CORS را به بقیه سرایت ندهید.</li>
+<li>⚠️ ۳۰+ route با <code>console.log(&quot;Error …&quot;, error)</code> و برگرداندن <code>error.message</code>.</li>
+</ul>
+<hr>
+<h2 id="۱۳.-نقاط-قوت-(که-نباید-در-بازنویسی-از-دست-بروند)">۱۳. نقاط قوت (که نباید در بازنویسی از دست بروند)</h2>
+<ol>
+<li><strong>موتور ترجمهٔ pivot-based</strong> با مسیرهای مستقیم <code>source:target</code> و ثبت خودکار — طراحی درست و مقیاس‌پذیر.</li>
+<li><strong><code>ssrfGuard.js</code></strong> — از میانگین پروژه‌های مشابه بالاتر؛ پارس عددی IPv6 و بازاعتبارسنجی ریدایرکت نشان‌دهندهٔ درک واقعی مسئله است.</li>
+<li><strong><code>custom-server.js</code> + <code>trustedPeer.js</code></strong> — حل درست مسئلهٔ XFF spoofing.</li>
+<li><strong>منطق fallback چندحسابی + breaker</strong> (<code>accountFallback.js</code>, <code>antigravityQuota.js</code>, <code>markAccountUnavailable</code>) با lock per-model و resetAt — بالغ و دقیق.</li>
+<li><strong><code>deny-by-default</code> در middleware</strong> و <code>LOCAL_ONLY_PATHS</code> برای مسیرهای اجرای پروسه.</li>
+<li><strong>مستندسازی معماری</strong> (<code>CLAUDE.md</code>, <code>ARCHITECTURE.md</code>, <code>AGENTS.md</code>) که «چرا» را توضیح می‌دهد — نادر است.</li>
+<li><strong>۳٬۳۹۲ خط لایهٔ DB با ۴ درایور و SQL تماماً پارامتری</strong>.</li>
+</ol>
+<hr>
+<h2 id="۱۴.-نقشهٔ-راه-اولویت‌دار">۱۴. نقشهٔ راه اولویت‌دار</h2>
+<h3>P0 — همین هفته</h3>
+<ol>
+<li><strong>آپدیت <code>next</code> (critical) و <code>undici</code> (high)</strong> → <code>npm audit fix</code> + تست build/workers build.</li>
+<li><strong>امضای کوکی mimo-login</strong> یا مشروط کردن آن به <code>requireLogin !== false</code> (SEC-01).</li>
+<li><strong>rate-limit روی <code>/v1/*</code></strong> — حداقل سقف همزمانی per key (SEC-03).</li>
+<li><strong>باطل کردن توکن GitHub</strong> (بخش ۰).</li>
+<li><strong>افزودن CI برای <code>eslint</code> + <code>vitest</code></strong> (بخش ۹).</li>
+</ol>
+<h3>P1 — دو تا چهار هفته</h3>
+<ol start="6">
+<li><strong>هش کردن API Keyها</strong> + نمایش prefix (SEC-02).</li>
+<li><strong>جابه‌جایی همهٔ fetchهای URL-کاربر به <code>fetchPublic</code></strong> + pin کردن IP (SEC-04).</li>
+<li><strong>حذف <code>killAppProcesses</code> مبتنی بر substring</strong> → PID file + تأیید مسیر باینری (SEC-05).</li>
+<li><strong>بازنویسی <code>selectionMutex</code> به per-provider + timeout</strong> (PERF-01).</li>
+<li><strong>استخراج <code>resolveCombo()</code></strong> و حذف تکرار ۵۰ خطی (BUG-01).</li>
+<li><strong>سیاست «بدون <code>catch {}</code> بی‌دلیل»</strong> با یک قاعده ESLint سفارشی + شمارندهٔ dropped-logs.</li>
+<li><strong>کش <code>getSettings()</code></strong> (PERF-02).</li>
+</ol>
+<h3>P2 — یک فصل</h3>
+<ol start="13">
+<li><strong>کامپوننت جنریک <code>ToolCard</code></strong> برای ۲۶ کارت CLI (حذف ~۳٬۰۰۰ خط تکراری).</li>
+<li><strong>شکستن فایل‌های ۱۰۰۰+ خطی</strong> (providers/[id], profile, ProviderLimits, usageRepo, combo.js).</li>
+<li><strong>یکسان‌سازی <code>machineId</code></strong> و حذف <code>REQUIRE_API_KEY</code>/envهای مرده.</li>
+<li><strong>رفع ۹۱ <code>set-state-in-effect</code></strong> یا حداقل آن‌هایی که در کامپوننت‌های دارای polling هستند.</li>
+<li><strong>صفحهٔ <code>SECURITY.md</code> عملی</strong> («چک‌لیست سخت‌سازی برای VPS عمومی»).</li>
+</ol>
+<h3>P3 — بلندمدت</h3>
+<ol start="18">
+<li><strong>مهاجرت تدریجی به TypeScript</strong> فقط برای <code>open-sse/</code> از <code>allowJs</code> + JSDoc (<code>checkJs</code>) شروع شود؛ یا حداقل zod در مرزهای پروایدر.</li>
+<li><strong>پاک‌سازی <code>known-fails.txt</code></strong> تا سوییت کاملاً سبز شود و بتواند گیت باشد.</li>
+<li><strong>بازبینی ۱۲۵ فایل registry</strong> با اسکریپت + تست golden برای هر پروایدر.</li>
+</ol>
+<hr>
+<h2 id="۱۵.-ضمیمهٔ-آماری">۱۵. ضمیمهٔ آماری</h2>
+<table>
+<thead>
+<tr>
+<th>سنجه</th>
+<th>مقدار</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>فایل کل مخزن</td>
+<td>۱٬۶۸۶</td>
+</tr>
+<tr>
+<td>فایل کد (js/mjs/jsx)</td>
+<td>۱٬۲۹۲</td>
+</tr>
+<tr>
+<td>خط کد (با تست)</td>
+<td>۱۸۹٬۰۸۵</td>
+</tr>
+<tr>
+<td>خط کد (بدون تست)</td>
+<td>۱۴۶٬۵۹۲</td>
+</tr>
+<tr>
+<td>فایل route در <code>src/app/api</code></td>
+<td>۱۶۶</td>
+</tr>
+<tr>
+<td>فایل registry پروایدر</td>
+<td>۱۲۵ (۶٬۱۹۲ خط)</td>
+</tr>
+<tr>
+<td>اکزکوتور</td>
+<td>۳۱ (۱۱٬۳۸۶ خط)</td>
+</tr>
+<tr>
+<td>فایل تست</td>
+<td>۲۸۱ (۴۱٬۸۲۱ خط)</td>
+</tr>
+<tr>
+<td>ESLint (اجرا شده)</td>
+<td>۳۴۵ پیام / ۲۲۴ فایل</td>
+</tr>
+<tr>
+<td><code>console.log/debug</code></td>
+<td>۶۷۵ در ۱۶۵ فایل</td>
+</tr>
+<tr>
+<td><code>catch {}</code> خالی</td>
+<td>۱۵۸ در ۴۹ فایل</td>
+</tr>
+<tr>
+<td><code>.catch(() =&gt; {})</code></td>
+<td>۸۴ در ۴۲ فایل</td>
+</tr>
+<tr>
+<td><code>==</code> سست</td>
+<td>۱۱۱ در ۶۷ فایل</td>
+</tr>
+<tr>
+<td>پنجره‌های تکراری ۸ خطی</td>
+<td>۱٬۴۷۳</td>
+</tr>
+<tr>
+<td>آسیب‌پذیری وابستگی</td>
+<td>۱۱ (۱ critical، ۷ high، ۳ moderate)</td>
+</tr>
+<tr>
+<td>بزرگ‌ترین فایل</td>
+<td><code>providers/[id]/page.js</code> — ۱٬۹۵۵ خط</td>
+</tr>
+</tbody></table>
+<p><strong>فایل همراه:</strong> <code>JB-Router-files-audit.csv</code> — یک ردیف برای هر ۹۵۶ فایل سورس با ستون‌های <code>file, loc, is_client, eslint_issues, fetch_calls, fs_writes, sql_stmts, json_parse, flags</code>. با فیلتر <code>flags</code> می‌توانید مستقیم به پرخطرترین فایل‌ها برسید.</p>
+<hr>
+<h3>یادداشت پایانی</h3>
+<p>اگر بخواهید، در پیام‌های بعدی می‌توانم روی هر کدام از این بخش‌ها عمیق‌تر بروم — مثلاً <strong>«بازبینی خط‌به‌خط کامل <code>open-sse/executors/*</code> (۱۱٬۳۸۶ خط)»</strong> یا <strong>«پچ آمادهٔ PR برای SEC-01/02/03 + فایل <code>ci.yml</code>»</strong>. فقط بگویید کدام ماژول اولویت دارد.</p>
+
+</div></body></html>

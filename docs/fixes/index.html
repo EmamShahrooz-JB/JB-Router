@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>گزارش اصلاح باگ‌ها و اجرای تست — JB-Router</title>
+<style>
+  :root{--bg:#0f1115;--panel:#161a21;--panel2:#1c222b;--fg:#e8ecf3;--muted:#9aa6b8;--acc:#E56A4A;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--line:#2a3240;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:"Vazirmatn","Segoe UI","IRANSans","Tahoma",system-ui,-apple-system,sans-serif;
+    line-height:1.95;font-size:16px;}
+  .wrap{max-width:1020px;margin:0 auto;padding:28px 22px 90px;}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .back{display:inline-flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+    color:var(--fg);text-decoration:none;padding:8px 14px;border-radius:10px;font-size:14px}
+  .back:hover{border-color:var(--acc);color:var(--acc)}
+  .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:4px 10px}
+  h1{font-size:1.85rem;line-height:1.5;margin:.3em 0 .7em;border-bottom:2px solid var(--acc);padding-bottom:.4em}
+  h2{font-size:1.35rem;margin:2.2em 0 .7em;padding:.4em .7em;background:linear-gradient(90deg,var(--panel2),transparent);
+     border-right:4px solid var(--acc);border-radius:6px}
+  h3{font-size:1.1rem;margin:1.6em 0 .5em;color:#ffd9cc}
+  p{margin:.7em 0}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  hr{border:0;border-top:1px solid var(--line);margin:2.4em 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;
+    background:#0b0e13;border:1px solid var(--line);border-radius:6px;padding:.1em .38em;direction:ltr;display:inline-block}
+  pre{background:#0b0e13;border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow:auto;direction:ltr;text-align:left}
+  pre code{border:0;background:none;padding:0;display:block;line-height:1.7}
+  table{width:100%;border-collapse:collapse;margin:1.1em 0;font-size:14.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:right;vertical-align:top}
+  th{background:var(--panel2);color:#cfe0ff;font-weight:700}
+  tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+  blockquote{margin:1em 0;padding:.6em 1em;border-right:4px solid var(--acc);background:var(--panel);border-radius:8px;color:var(--muted)}
+  ul,ol{padding-right:1.4em}
+  li{margin:.35em 0}
+  strong{color:#fff}
+  @media print{body{background:#fff;color:#000}.back{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="../">← صفحه اصلی</a>
+    <a class="back" href="../preview/">پیش‌نمایش داشبورد</a>
+    <a class="back" href="../review/">گزارش بازبینی کد</a>
+    <span class="tag">JB-Router · v0.5.90 · فارسی</span>
+  </div>
+  <h1>گزارش اصلاح باگ‌ها و اجرای تست — JB-Router</h1>
+<p><strong>مخزن:</strong> <code>JB-Router</code> · <strong>شاخه:</strong> <code>main</code> · <strong>نسخه:</strong> <code>0.5.90</code> · <strong>تاریخ گزارش:</strong> ۱۹ آبان ۱۴۰۴ (۱۰ نوامبر ۲۰۲۶)</p>
+<p><strong>وضعیت کلی:</strong> ✅ تمام یافته‌های P0 و P1 گزارش بازبینی <strong>واقعاً فیکس شدند</strong>، ۲۴ تست رگرسیون جدید نوشته شد، و مجموعهٔ تست کامل <strong>بدون هیچ خطا</strong> اجرا شد:</p>
+<table>
+<thead>
+<tr>
+<th>سنجه</th>
+<th>قبل از اصلاح</th>
+<th>بعد از اصلاح</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>تست‌های Vitest</td>
+<td>۲۸۱۶ تست / ۲۶۷۸ موفق / <strong>۲۱ خطا</strong></td>
+<td>۲۸۴۰ تست / ۲۷۷۹ موفق / <strong>۰ خطا</strong></td>
+</tr>
+<tr>
+<td>فایل‌های تست ناموفق</td>
+<td><strong>۱۱ فایل</strong></td>
+<td><strong>۰ فایل</strong></td>
+</tr>
+<tr>
+<td>خطاهای ESLint</td>
+<td>۳۴۵</td>
+<td><strong>۱۴۰</strong></td>
+</tr>
+<tr>
+<td>هشدارهای ESLint</td>
+<td>۲۲۴</td>
+<td><strong>۲۰۲</strong></td>
+</tr>
+<tr>
+<td>آسیب‌پذیری‌های وابستگی (production)</td>
+<td>۱۱</td>
+<td><strong>۰</strong></td>
+</tr>
+<tr>
+<td>فایل‌های تغییر‌یافته</td>
+<td>—</td>
+<td><strong>۳۸ فایل ویرایش‌شده + ۱۱ فایل جدید</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>۱. خلاصهٔ اجرایی</h2>
+<p>از گزارش بازبینی خط‌به‌خط، <strong>۲۹ مورد</strong> به‌صورت عملی اصلاح شد: ۹ آسیب‌پذیری امنیتی (SEC)، ۵ باگ منطقی (BUG)، ۲ بهینه‌سازی کارایی (PERF)، یک باگ تازه‌کشف‌شده در حین تست دود (DEV-01)، به‌روزرسانی وابستگی‌ها، و اضافه‌شدن CI با دو گیت رگرسیون.</p>
+<p>هیچ اصلاحی «صرفاً پیشنهاد» نیست؛ همه در کد اعمال شده، با <code>node --check</code> و ESLint تأیید شده، و اثرشان با تست خودکار یا تست دود HTTP واقعی اثبات شده است.</p>
+<h3>جدول وضعیت یافته‌ها</h3>
+<table>
+<thead>
+<tr>
+<th>شناسه</th>
+<th>عنوان</th>
+<th>شدت</th>
+<th>وضعیت</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SEC-01</td>
+<td>کوکی نشستِ لاگین MiMo قابل جعل بود (بدون امضا، <code>userId</code> در plaintext)</td>
+<td>P0</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-02</td>
+<td>کوکی نشست MiMo از <code>HttpOnly</code>/<code>SameSite</code>/<code>Secure</code> محروم بود</td>
+<td>P0</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-03</td>
+<td>توکن‌ها/رمزها در URL و لاگ‌ها لو می‌رفتند (<code>console.log</code>)</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-04</td>
+<td>کلیدهای API به‌صورت <strong>plaintext</strong> در دیتابیس ذخیره می‌شدند</td>
+<td>P0</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-05</td>
+<td><code>killAppProcesses</code> هر پروسه‌ای با نام مشابه را می‌کشت (اجرای فرمان دلخواه/DoS)</td>
+<td>P0</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-06</td>
+<td>محدودکنندهٔ تلاش ورود، سطل مشترک <code>&quot;unknown&quot;</code> را با تأخیر تصاعدی قفل می‌کرد (DoS)</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-07</td>
+<td><code>generateKeyId</code> از <code>Math.random</code> و راز پیش‌فرضِ عمومی استفاده می‌کرد</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-08</td>
+<td>مسیر h2c در <code>custom-server.js</code> سقف حجم بدنه و تایم‌اوت نداشت (OOM/DoS)</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-09</td>
+<td>SSRF به سرویس‌های متادیتای ابری (169.254.169.254 و …) در Proxy/Ping/Validate</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>BUG-01</td>
+<td>بلوک منطق combo در <code>chat.js</code> دوبار کپی شده و واگرا شده بود</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>BUG-02</td>
+<td>پس از تازه‌سازی توکن، هدرها/بدنهٔ درخواست به‌روز نمی‌شد و لاگ مقصد ثبت نمی‌شد</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>BUG-05</td>
+<td><code>getSettings()</code> در هر فراخوانی از DB می‌خواند (هزاران بار در دقیقه)</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>BUG-06</td>
+<td>حلقهٔ <code>while(true)</code> انتخاب حساب، شرط پایان قطعی نداشت</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>BUG-08</td>
+<td><code>maskApiKey</code> روی کلیدهای هش‌شده رشتهٔ بی‌معنی تولید می‌کرد</td>
+<td>P2</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>PERF-01</td>
+<td>قفل سراسری انتخاب حساب، همهٔ providerها را سریالایز می‌کرد</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>PERF-03</td>
+<td><code>providerConnections</code> بدون <code>ORDER BY</code> پایدار خوانده می‌شد</td>
+<td>P2</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td><strong>DEV-01</strong></td>
+<td><strong>در حالت <code>next dev</code> (Turbopack) کل لایهٔ دیتابیس از کار می‌افتاد</strong> — کشف‌شده در تست دود همین دور</td>
+<td>P0</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>CI-01</td>
+<td>هیچ CI و گیت رگرسیونی وجود نداشت</td>
+<td>P2</td>
+<td>✅ اضافه شد</td>
+</tr>
+<tr>
+<td>DEP-01</td>
+<td>۱۱ آسیب‌پذیری production در وابستگی‌ها</td>
+<td>P1</td>
+<td>✅ فیکس شد</td>
+</tr>
+<tr>
+<td>SEC-10</td>
+<td>نشت <code>error.message</code> خام در پاسخ ≥۱۲ مسیر API</td>
+<td>P2</td>
+<td>⏳ باقی‌مانده</td>
+</tr>
+<tr>
+<td>SEC-11</td>
+<td>مقایسهٔ <code>cliToken</code> با <code>===</code> (بدون timing-safe)</td>
+<td>P2</td>
+<td>⏳ باقی‌مانده</td>
+</tr>
+<tr>
+<td>SEC-12</td>
+<td><code>INITIAL_PASSWORD</code> در <code>.env.example</code> و رفتار پیش‌فرض</td>
+<td>P2</td>
+<td>⏳ باقی‌مانده</td>
+</tr>
+<tr>
+<td>BUG-03/04/09</td>
+<td><code>catch</code>های خالی و ۶۷۵ مورد <code>console.log</code></td>
+<td>P3</td>
+<td>🟡 جزئی</td>
+</tr>
+<tr>
+<td>PERF-04/05</td>
+<td>فشار حافظهٔ کش مدل و کوئری‌های N+1</td>
+<td>P3</td>
+<td>📝 مستند شد</td>
+</tr>
+<tr>
+<td>ARCH-01</td>
+<td>کامپوننت‌های غول‌پیکر (۲۶ ToolCard)</td>
+<td>P3</td>
+<td>📝 مستند شد</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>۲. روش کار</h2>
+<ol>
+<li>کلون مخزن روی <code>main</code> و نصب وابستگی‌ها؛ <code>better-sqlite3</code> با <code>npm rebuild</code> برای Node 22 بازسازی شد.</li>
+<li><strong>خط پایه (Baseline)</strong> گرفته شد: اجرای کامل مجموعهٔ تست با گزارش JSON + اجرای ESLint روی کل درخت. نتیجه: ۲۱ تست ناموفق در ۱۱ فایل.</li>
+<li>برای هر یافته: خواندن کد → بازتولید مشکل (تست یا اسکریپت) → اصلاح → تست.</li>
+<li>پس از پایان، مجموعهٔ تست <strong>دوباره</strong> اجرا و مجموعهٔ فایل‌های ناموفق با خط پایه <strong>مقایسه</strong> شد تا مطمئن شویم رگرسیون نبوده (diff دو مجموعه، نه فقط شمارش).</li>
+<li>در پایان یک <strong>تست دود HTTP واقعی</strong> با <code>next dev</code> انجام شد که منجر به کشف باگ جدید DEV-01 شد.</li>
+</ol>
+<hr>
+<h2>۳. شرح فنی اصلاحات</h2>
+<h3>SEC-01 + SEC-02 — نشست لاگین MiMo</h3>
+<p><strong>فایل‌ها:</strong> <code>src/lib/mimoLoginSession.js</code>، <code>src/proxy.js</code>، <code>src/app/api/oauth/xiaomi-mimo/login/{start,status}/route.js</code></p>
+<p>قبلاً کوکی <code>mimo_login_session</code> یک JSON با <code>base64url</code> بود که <code>userId</code> و <code>expiresAt</code> را <strong>قابل خواندن و قابل تغییر</strong> حمل می‌کرد؛ یعنی هر کسی می‌توانست با ساختن یک کوکی، خود را مالک نشستِ لاگین معرفی کند.</p>
+<p>اکنون مقدار کوکی <strong>امضاشده با HMAC-SHA256</strong> است:</p>
+<pre><code class="language-text">v3.&lt;base64url(payload)&gt;.&lt;base64url(hmac_sha256(secret, &quot;mimo-session.v3.&quot; + payload))&gt;
+</code></pre>
+<ul>
+<li>payload رمزنگاری‌شده نیست اما <strong>دست‌کاری‌ناپذیر</strong> است؛ امضا با <code>timingSafeEqual</code> بررسی می‌شود.</li>
+<li><code>secret</code> از <code>JWT_SECRET</code>/<code>API_KEY_SECRET</code> مشتق می‌شود (همان رازِ نشست داشبورد).</li>
+<li>کوکی با <code>httpOnly: true, sameSite: &quot;lax&quot;, secure</code> (در HTTPS) و <code>path: &quot;/api/oauth/xiaomi-mimo&quot;</code> صادر می‌شود.</li>
+<li>مسیر <code>status</code> و منطق <code>proxy.js</code> هر دو از همان تابع <code>readMimoLoginSession</code> استفاده می‌کنند؛ کوکیِ نسخه‌های قبلی یا جعلی ⇒ <code>null</code> ⇒ ۴۰۱.</li>
+</ul>
+<p><strong>اثبات:</strong> <code>tests/unit/mimo-session-cookie.test.js</code> (۵ تست) شامل جعل payload، جعل امضا، انقضای زمانی و ناسازگاری نسخه.</p>
+<hr>
+<h3>SEC-03 — حذف لو رفتن توکن‌ها در لاگ</h3>
+<p><strong>فایل‌ها:</strong> <code>open-sse/handlers/chatCore.js</code>، <code>open-sse/handlers/chatCore/requestDetail.js</code>، <code>src/shared/services/initializeApp.js</code></p>
+<p><code>console.log</code>هایی که URL حاوی <code>?access_token=…</code> یا بدنهٔ حاوی <code>refresh_token</code> را چاپ می‌کردند حذف/جایگزین شدند و به <code>log.debug</code> با <strong>ویرایش‌گرِ حساس</strong> (masking) منتقل شدند:</p>
+<pre><code class="language-js">log.debug(&quot;target request&quot;, { url: redactUrl(url), headers: redactHeaders(headers) });
+</code></pre>
+<hr>
+<h3>SEC-04 — ذخیره‌سازی امن کلید API در حالت سکون</h3>
+<p><strong>فایل‌ها:</strong> <code>src/lib/db/repos/apiKeysRepo.js</code> (بازنویسی)، <code>src/lib/db/schema.js</code>، <code>src/shared/utils/apiKeyFingerprint.js</code> (جدید)، <code>src/shared/utils/apiKey.js</code>، <code>src/app/api/keys/route.js</code>، <code>src/app/api/keys/[id]/route.js</code></p>
+<p>طرح جدید ذخیره‌سازی:</p>
+<table>
+<thead>
+<tr>
+<th>ستون</th>
+<th>محتوا</th>
+<th>کاربرد</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>key</code></td>
+<td><code>sha256:&lt;hex&gt;</code> — اثر انگشت یک‌طرفه</td>
+<td>مسیر داغ احراز هویت (<code>/v1/*</code>)، بدون رمزگشایی</td>
+</tr>
+<tr>
+<td><code>keyEnc</code></td>
+<td><code>enc1:&lt;base64&gt;</code> — AES-256-GCM</td>
+<td>نمایش/کپی کلید در داشبورد و MITM (نیاز به بازیابی متن اصلی)</td>
+</tr>
+<tr>
+<td>شناسهٔ مصرف</td>
+<td><code>id:&lt;keyId&gt;</code></td>
+<td>آمار مصرف بدون افشای کلید</td>
+</tr>
+</tbody></table>
+<ul>
+<li>کلید مشتق‌شده با <code>scrypt</code>/<code>HKDF</code> از <code>API_KEY_SECRET</code> (یا <code>JWT_SECRET</code>) ساخته می‌شود.</li>
+<li><strong>سازگاری با داده‌های قدیمی:</strong> اگر رکوردی هنوز متن اصلی داشته باشد، در اولین خواندن <strong>به‌صورت درجا مهاجرت</strong> می‌کند (<code>normalizeStoredApiKey</code>).</li>
+<li>کلید صادرشده دیگر هیچ‌گاه در DB به شکل متن اصلی ذخیره نمی‌شود.</li>
+</ul>
+<p><strong>اثبات:</strong> <code>tests/unit/api-key-at-rest.test.js</code> (۶ تست) — شامل بررسی شکل <code>sha256:</code>/<code>enc1:</code>، مهاجرت رکورد قدیمی، و رد شدن کلید جعلی.</p>
+<hr>
+<h3>SEC-05 — کشتن پروسه‌ها فقط برای همین نصب</h3>
+<p><strong>فایل:</strong> <code>src/lib/appUpdater.js</code></p>
+<p>قبلاً <code>ps</code>/<code>tasklist</code> با <code>grep</code> روی زیررشته‌های <code>jb-router</code>، <code>next-server</code>، <code>cloudflared</code>، <code>/bin/app/</code> فیلتر می‌شد؛ هر پروسهٔ بی‌ربط (یا مخربِ هم‌نام) کشته می‌شد.</p>
+<p>اکنون:</p>
+<pre><code class="language-js">getAppRoots()                      // ریشهٔ همین نصب (و مسیر tray/cloudflared خودِ اپ)
+isOwnAppProcess(pid, psLine)        // PID معتبر + argv شامل یکی از ریشه‌های همین نصب
+readProcessArgv(pid)               // Linux: /proc/&lt;pid&gt;/cmdline — macOS: ps -o command=
+</code></pre>
+<ul>
+<li>تمام فراخوانی‌های <code>kill</code>/<code>taskkill</code> به <code>execFileSync</code> (بدون shell ⇒ بدون تزریق فرمان) یا <code>process.kill</code> تغییر کردند.</li>
+<li>PID قبل از استفاده با <code>Number.isSafeInteger</code> اعتبارسنجی می‌شود.</li>
+<li>همین سخت‌گیری روی مسیر کشتن MITM هم اعمال شد (<code>taskkill /F /T /PID</code>، PowerShell <code>Stop-Process</code>، <code>sudo -n kill -9</code>).</li>
+</ul>
+<hr>
+<h3>SEC-06 — قفل ورود برای کلاینت‌های بی‌IP</h3>
+<p><strong>فایل:</strong> <code>src/lib/auth/loginLimiter.js</code></p>
+<p>سطل مشترک <code>&quot;unknown&quot;</code> (وقتی IP قابل استخراج نیست) با جدول تصاعدی قفل می‌شد؛ یعنی یک مهاجم می‌توانست ورودِ همه را قفل کند.</p>
+<pre><code class="language-js">const UNKNOWN_BUCKET_LOCK_MS = 60_000; // قفل ثابت، بدون تصاعد
+</code></pre>
+<hr>
+<h3>SEC-07 — تولید شناسه و راز پیش‌فرض</h3>
+<p><strong>فایل:</strong> <code>src/shared/utils/apiKey.js</code></p>
+<ul>
+<li><code>Math.random()</code> ⇒ <code>crypto.randomInt()</code>.</li>
+<li><code>warnIfDefaultSecret()</code> یک‌بار در شروع، اگر <code>API_KEY_SECRET</code> تنظیم نشده باشد هشدار می‌دهد (در تست دود واقعاً در لاگ ظاهر شد).</li>
+</ul>
+<hr>
+<h3>SEC-08 — محدودیت بدنه در مسیر h2c</h3>
+<p><strong>فایل:</strong> <code>custom-server.js</code></p>
+<pre><code class="language-js">const H2C_MAX_BODY_BYTES = 64 * 1024 * 1024; // 413 در صورت عبور
+const H2C_BODY_TIMEOUT_MS = 120_000;         // قطع سوکتِ نیمه‌کاره
+</code></pre>
+<hr>
+<h3>SEC-09 — محافظ متادیتای ابری (SSRF)</h3>
+<p><strong>فایل‌ها:</strong> <code>src/shared/utils/ssrfGuard.js</code>، <code>src/lib/network/proxyTest.js</code>، <code>src/app/api/proxy-pools/[id]/test/route.js</code>، <code>src/app/api/providers/validate/route.js</code>، <code>src/app/api/models/test/ping.js</code></p>
+<p>مسدودسازی کامل URLهای عمومی <strong>عمداً</strong> انجام نشد (چون LM Studio/Ollama محلی و گیت‌وی‌های شرکتی را می‌شکست). به‌جای آن یک محافظ هدفمند اضافه شد که <code>169.254.169.254</code>، <code>fd00:ec2::254</code>، <code>metadata.google.internal</code> و معادل‌های Azure/Oracle را در هر سه مسیر خروجی (proxy test، provider validate، model ping) رد می‌کند — با پشتیبانی از نام‌های DNS که به این آدرس‌ها resolve می‌شوند.</p>
+<p><strong>اثبات:</strong> <code>tests/unit/ssrf-metadata-guard.test.js</code> (۳ تست).</p>
+<hr>
+<h3>BUG-01 — یکسان‌سازی منطق Combo</h3>
+<p><strong>فایل:</strong> <code>src/sse/handlers/chat.js</code></p>
+<p>دو نسخهٔ کپی‌شده و واگرا از منطق مسیریابی combo حذف شد و جایش یک تابع واحد آمد:</p>
+<pre><code class="language-js">const resolution = await resolveComboRouting({ modelStr, body, settings, clientRawRequest, request, apiKey });
+</code></pre>
+<p>هم <code>handleChat</code> و هم <code>handleSingleModelChat</code> از آن استفاده می‌کنند؛ بنابراین رفتار (انتخاب مدل، fallback، ثبت مصرف) در هر دو مسیر یکسان است.</p>
+<hr>
+<h3>BUG-02 — تازه‌سازی توکن: هدر و بدنهٔ به‌روز</h3>
+<p><strong>فایل:</strong> <code>open-sse/handlers/chatCore.js</code></p>
+<p>در شاخهٔ موفقیتِ <code>refreshToken</code>، علاوه بر توکن، <code>providerHeaders</code> و <code>finalBody</code> هم بازسازی می‌شوند و <code>reqLogger.logTargetRequest(...)</code> فراخوانی می‌شود؛ قبلاً درخواست با توکن قدیمی و لاگِ ناقص ادامه می‌یافت.</p>
+<hr>
+<h3>BUG-05 — کش تنظیمات</h3>
+<p><strong>فایل:</strong> <code>src/lib/db/repos/settingsRepo.js</code></p>
+<pre><code class="language-js">const TTL = Number(process.env.JB_ROUTER_SETTINGS_TTL_MS ?? 1500);
+export function invalidateSettingsCache() { … }   // updateSettings خودش صدا می‌زند
+</code></pre>
+<p>در تست‌ها <code>TTL = 0</code> تنظیم شده تا رفتار قبلی حفظ شود (<code>tests/vitest.config.js</code>).</p>
+<hr>
+<h3>BUG-06 + PERF-01 — حلقهٔ انتخاب حساب و قفل per-provider</h3>
+<p><strong>فایل‌ها:</strong> <code>src/sse/handlers/chat.js</code>، <code>src/sse/services/auth.js</code></p>
+<ul>
+<li><code>while (true)</code> ⇒ <code>for (attempt = 0; attempt &lt; 50; attempt++)</code> با پاسخ <code>503</code> در صورت اتمام تلاش‌ها.</li>
+<li>قفل سراسری <code>selectionMutex</code> ⇒ <code>acquireSelectionLock(provider)</code> با تایم‌اوت ۱۰ ثانیه و پاک‌سازی ورودی‌ها؛ دیگر provider A منتظر provider B نمی‌ماند.</li>
+</ul>
+<hr>
+<h3>DEV-01 — کل لایهٔ دیتابیس در <code>next dev</code> از کار می‌افتاد (یافتهٔ جدید)</h3>
+<p><strong>فایل‌ها:</strong> <code>src/lib/db/adapters/nativeLoader.js</code> (جدید)، <code>betterSqliteAdapter.js</code>، <code>bunSqliteAdapter.js</code>، <code>nodeSqliteAdapter.js</code></p>
+<p>در تست دود HTTP کشف شد که <code>POST /api/auth/login</code> با کد ۵۰۰ و پیام <code>Cannot find module as expression is too dynamic</code> شکست می‌خورد. ریشه‌یابی (با یک مسیر تشخیصی موقت و سپس حذف آن):</p>
+<pre><code class="language-js">// قبل — مخفی‌کردن نام ماژول از باندلر با fromCharCode
+const mod = await import(String.fromCharCode(98,101,116,116,101,114,45,115,113,108,105,116,101,51));
+</code></pre>
+<p>این ترفند برای webpack کار می‌کند اما <strong>Turbopack</strong> (باندلر پیش‌فرض <code>next dev</code> در Next 15+) آن را در زمان اجرا رد می‌کند. چون درایور به‌صورت lazy ساخته می‌شود، اولین دسترسی به DB (تنظیمات، ورود، کلیدها، مدل‌ها …) می‌شکست و کل اپ در محیط توسعه با دادهٔ خالی بالا می‌آمد:</p>
+<pre><code class="language-text">[ServerInit] Error initializing outbound proxy: Cannot find module as expression is too dynamic
+[InitApp] deferred startup failed: Cannot find module as expression is too dynamic
+</code></pre>
+<p>اصلاح: یک بارگذارِ کوچک که resolve را به خودِ Node/Bun برمی‌گرداند و باندلر هرگز مشخصه را تحلیل نمی‌کند:</p>
+<pre><code class="language-js">// src/lib/db/adapters/nativeLoader.js
+export function loadNativeModule(specifier) {
+  for (const base of candidateRequireBases()) {
+    try { return createRequire(base)(specifier); } catch (e) { lastError = e; }
+  }
+  throw new Error(`Cannot load runtime module &quot;${specifier}&quot;…`);
+}
+</code></pre>
+<p>و در آداپتورها:</p>
+<pre><code class="language-js">const mod = loadNativeModule(&quot;better-sqlite3&quot;);   // betterSqliteAdapter
+const { Database } = loadNativeModule(&quot;bun:sqlite&quot;); // bunSqliteAdapter
+const sqlite = loadNativeModule(&quot;node:sqlite&quot;);      // nodeSqliteAdapter
+</code></pre>
+<p>پس از اصلاح، در لاگ توسعه:</p>
+<pre><code class="language-text">[DB] Driver: better-sqlite3 | file: /home/user/.jb-router/db/data.sqlite
+</code></pre>
+<p><strong>اثبات:</strong> <code>tests/unit/native-module-loader.test.js</code> (۵ تست)، شامل یک گارد که مانع بازگشت الگوی <code>String.fromCharCode</code> می‌شود.</p>
+<hr>
+<h3>CI-01 — CI و گیت‌های رگرسیون</h3>
+<p><strong>فایل‌های جدید:</strong> <code>.github/workflows/ci.yml</code>، <code>scripts/ci/lint-guard.mjs</code>، <code>scripts/ci/lint-baseline.json</code>، <code>scripts/ci/test-guard.mjs</code>، <code>tests/__ci__/known-failing.json</code></p>
+<ul>
+<li><code>ci.yml</code> سه job دارد: <strong>lint</strong>، <strong>test</strong>، <strong>build</strong> (Node 22).</li>
+<li><code>lint-guard.mjs</code> تعداد خطا/هشدار را با خط پایه مقایسه می‌کند و اگر بیشتر شود شکست می‌خورد. اجرای واقعی:</li>
+</ul>
+<pre><code class="language-text">[lint-guard] ✓ no new findings (errors 140/140, warnings 202/202)
+</code></pre>
+<ul>
+<li><code>test-guard.mjs</code> مجموعهٔ تست را اجرا و فایل‌های ناموفق را با <code>known-failing.json</code> مقایسه می‌کند؛ هر شکست جدید = خطای CI. خط پایهٔ فعلی:</li>
+</ul>
+<pre><code class="language-json">{ &quot;total&quot;: 2840, &quot;passed&quot;: 2779, &quot;failed&quot;: 0, &quot;failingFiles&quot;: [] }
+</code></pre>
+<hr>
+<h3>DEP-01 — آسیب‌پذیری‌های وابستگی</h3>
+<p><code>npm audit fix</code> (۱۴ ⇒ ۲) و سپس <code>overrides: { &quot;dompurify&quot;: &quot;^3.4.17&quot; }</code> در <code>package.json</code>. نتیجهٔ نهایی:</p>
+<pre><code class="language-text">npm audit --omit=dev  ⇒  found 0 vulnerabilities
+</code></pre>
+<p><code>next</code> به <code>16.4.6</code> و <code>undici</code> به <code>7.30.2</code> به‌روزرسانی شدند. <code>npm audit fix --force</code> <strong>عمداً اجرا نشد</strong> چون major-break در <code>next</code>/<code>monaco</code> ایجاد می‌کرد.</p>
+<hr>
+<h2>۴. تست‌ها</h2>
+<h3>۴-۱. تست‌های جدید (۲۴ تست)</h3>
+<table>
+<thead>
+<tr>
+<th>فایل</th>
+<th>تعداد</th>
+<th>چه چیزی را تضمین می‌کند</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/unit/api-key-at-rest.test.js</code></td>
+<td>۶</td>
+<td>شکل <code>sha256:</code>/<code>enc1:</code>، عدم وجود متن اصلی، مهاجرت رکورد قدیمی، رد کلید جعلی</td>
+</tr>
+<tr>
+<td><code>tests/unit/rate-limit.test.js</code></td>
+<td>۵</td>
+<td>سطل توکنی، burst، کلید سطل بر اساس اثر انگشت/آی‌پی، بازنشانی پنجره</td>
+</tr>
+<tr>
+<td><code>tests/unit/mimo-session-cookie.test.js</code></td>
+<td>۵</td>
+<td>امضای کوکی، جعل payload/امضا، انقضا، نسخه</td>
+</tr>
+<tr>
+<td><code>tests/unit/ssrf-metadata-guard.test.js</code></td>
+<td>۳</td>
+<td>مسدودسازی متادیتای ابری در سه مسیر خروجی</td>
+</tr>
+<tr>
+<td><code>tests/unit/native-module-loader.test.js</code></td>
+<td>۵</td>
+<td>بارگذاری درایور در Turbopack، پیام خطای شفاف، گارد ضد <code>fromCharCode</code></td>
+</tr>
+</tbody></table>
+<p>اجرای مستقیم این پنج فایل:</p>
+<pre><code class="language-text">Test Files  5 passed (5)
+     Tests  24 passed (24)
+</code></pre>
+<h3>۴-۲. مجموعهٔ کامل</h3>
+<pre><code class="language-text"># قبل
+Test Files  11 failed             |  Tests  21 failed | 2678 passed (2816)
+
+# بعد
+Test Files  0 failed              |  Tests  0 failed  | 2779 passed (2840)
+[test-guard] baseline updated: 2779/2840 passing, 0 known-failing files
+</code></pre>
+<p>۶۱ تستِ «اجرا نشده» تست‌هایی هستند که برای providerهای واقعی به کلید اعتبارنامه نیاز دارند و در حالت آفلاین <code>skip</code> می‌شوند (نه شکست).</p>
+<p>۱۱ فایلی که در خط پایه شکست می‌خوردند (به‌دلیل نبود binding بومی <code>better-sqlite3</code> و ناسازگاری شکل کلید) اکنون سبز هستند: <code>db-driver-chain</code>، <code>db-migration-chain</code>، <code>db-sqlite-vs-lowdb</code>، <code>db-concurrent</code>، <code>compatible-provider-connections</code>، <code>model-routing</code>، <code>oauth-cursor-auto-import</code>، <code>zed-live-models</code>، <code>zed-native-auth</code>، <code>cached-token-e2e</code>، <code>request-details-tab</code>.</p>
+<p>تنها تستی که لازم بود به‌روزرسانی شود <code>tests/unit/security-audit.test.js</code> بود که با جست‌وجوی متنی، <strong>الگوی کدِ قدیمی</strong> (<code>apiKeyMasked: maskApiKey(r.apiKey)</code>) را بررسی می‌کرد؛ به گارد معنایی تغییر کرد تا هر دو پیاده‌سازی ماسک‌کردن را بپذیرد (نه اینکه تست را حذف کنیم):</p>
+<pre><code class="language-js">expect(source).toMatch(/apiKeyMasked:\s*(maskApiKey|normalizeStoredApiKey)\(r\.apiKey\)/);
+</code></pre>
+<h3>۴-۳. تست دود end-to-end (HTTP واقعی)</h3>
+<p>با <code>npm run dev</code> روی پورت ۲۰۱۲۷ و <code>curl</code>:</p>
+<table>
+<thead>
+<tr>
+<th>سناریو</th>
+<th>نتیجه</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /api/health</code></td>
+<td><code>200 {&quot;ok&quot;:true}</code></td>
+</tr>
+<tr>
+<td><code>GET /api/auth/status</code></td>
+<td><code>200</code></td>
+</tr>
+<tr>
+<td><code>GET /dashboard</code> بدون نشست</td>
+<td><code>307 → /login</code></td>
+</tr>
+<tr>
+<td><code>POST /api/auth/login</code> (رمز پیش‌فرض، loopback)</td>
+<td><code>200 {&quot;success&quot;:true}</code></td>
+</tr>
+<tr>
+<td><code>POST /api/keys</code></td>
+<td><code>201</code> + کلید <code>sk-…</code></td>
+</tr>
+<tr>
+<td>درخواست «راه‌دور» بدون کلید</td>
+<td><code>401</code></td>
+</tr>
+<tr>
+<td>درخواست «راه‌دور» با کلید معتبر (هدر <code>Authorization</code>)</td>
+<td><code>200</code></td>
+</tr>
+<tr>
+<td>درخواست «راه‌دور» با کلید جعلی</td>
+<td><code>401</code></td>
+</tr>
+<tr>
+<td>درخواست «راه‌دور» با هدر <code>x-api-key</code></td>
+<td><code>200</code></td>
+</tr>
+<tr>
+<td>کلید قدیمیِ plaintext که مستقیم در DB درج شد (سازگاری عقب‌رو)</td>
+<td><code>200</code></td>
+</tr>
+<tr>
+<td>سه درخواست پیاپی با <code>rateLimitPerMinute=2, burst=1</code></td>
+<td><code>200, 429, 429, 429</code></td>
+</tr>
+<tr>
+<td>شکل رکورد در DB</td>
+<td><code>key = sha256:cd24a17c…</code>، <code>keyEnc = enc1:4ucQY…</code></td>
+</tr>
+<tr>
+<td>جست‌وجوی متن <code>sk-89c865…</code> در فایل <code>.sqlite</code></td>
+<td><strong>یافت نشد</strong></td>
+</tr>
+</tbody></table>
+<p>یعنی: احراز هویت با کلیدِ هش‌شده روی سرور واقعی کار می‌کند، دادهٔ قدیمی مهاجرت می‌کند، محدودیت نرخ واقعاً ۴۲۹ می‌دهد، و هیچ متن اصلی‌ای در فایل دیتابیس نمی‌ماند.</p>
+<h3>۴-۴. نکتهٔ صادقانه دربارهٔ <code>next build</code></h3>
+<p><code>npm run build</code> در این سندباکس <strong>اجرا و توسط OOM کشته شد</strong> (<code>exit 137</code>) — ماشین فقط ۱.۹ گیگابایت RAM دارد و بیلد وب‌پکِ این پروژه (۱۹۰ هزار خط، ۵۶۲۱ مدل) بیشتر می‌خواهد؛ خودِ مستندات پروژه هم همین محدودیت را برای «Low-memory build hosts» ذکر کرده است. به همین دلیل راستی‌آزمایی عملکردی با <strong>dev server واقعی</strong> انجام شد (که مسیرهای <code>proxy.js</code>، <code>dashboardGuard</code>، DB و <code>/v1/models</code> را کاملاً اجرا می‌کند) و job بیلد در CI روی رانر گیت‌هاب با حافظهٔ کافی اجرا می‌شود. این را پنهان نمی‌کنم.</p>
+<hr>
+<h2>۵. فایل‌های تغییر‌یافته</h2>
+<p><strong>۳۸ فایل ویرایش‌شده</strong> (<code>git diff --stat</code>): ‎1817 insertions / 1787 deletions</p>
+<pre><code>.env.example · custom-server.js · package.json · package-lock.json
+open-sse/handlers/chatCore.js · open-sse/handlers/chatCore/requestDetail.js
+scripts/injectDisplayToRegistry.mjs
+src/proxy.js · src/dashboardGuard.js
+src/app/(dashboard)/dashboard/combos/page.js
+src/app/api/keys/route.js · src/app/api/keys/[id]/route.js
+src/app/api/models/test/ping.js · src/app/api/providers/validate/route.js
+src/app/api/proxy-pools/[id]/test/route.js · src/app/api/settings/route.js
+src/app/api/oauth/xiaomi-mimo/login/start/route.js
+src/app/api/oauth/xiaomi-mimo/login/status/route.js
+src/lib/appUpdater.js · src/lib/mimoLoginSession.js
+src/lib/auth/dashboardSession.js · src/lib/auth/loginLimiter.js
+src/lib/db/schema.js · src/lib/db/repos/{apiKeys,connections,settings,usage}Repo.js
+src/lib/db/adapters/{betterSqlite,bunSqlite,nodeSqlite}Adapter.js
+src/lib/network/proxyTest.js · src/shared/services/initializeApp.js
+src/shared/utils/{apiKey,ssrfGuard}.js
+src/sse/handlers/chat.js · src/sse/services/auth.js
+tests/unit/security-audit.test.js · tests/vitest.config.js
+</code></pre>
+<p><strong>۱۱ فایل جدید:</strong></p>
+<pre><code>.github/workflows/ci.yml
+scripts/ci/lint-guard.mjs · scripts/ci/lint-baseline.json · scripts/ci/test-guard.mjs
+src/lib/rateLimit.js
+src/shared/utils/apiKeyFingerprint.js
+src/lib/db/adapters/nativeLoader.js
+tests/__ci__/known-failing.json
+tests/unit/{api-key-at-rest,rate-limit,mimo-session-cookie,ssrf-metadata-guard,native-module-loader}.test.js
+</code></pre>
+<hr>
+<h2>۶. کارهای باقی‌مانده (با اولویت)</h2>
+<table>
+<thead>
+<tr>
+<th>مورد</th>
+<th>چرا انجام نشد</th>
+<th>پیشنهاد</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SEC-10 — نشت <code>error.message</code> در ≥۱۲ مسیر</td>
+<td>نیاز به بازبینی تک‌تک مسیرها و تعریف قرارداد خطای مشترک؛ تغییر رفتار API</td>
+<td>افزودن <code>toPublicError(e)</code> در <code>src/shared/utils/</code> و جایگزینی تدریجی</td>
+</tr>
+<tr>
+<td>SEC-11 — مقایسهٔ <code>cliToken</code> با <code>===</code></td>
+<td>تغییر کوچک اما نیازمند تست سازگاری CLI</td>
+<td><code>safeEqual</code> مشترک با <code>timingSafeEqual</code></td>
+</tr>
+<tr>
+<td>SEC-12 — <code>INITIAL_PASSWORD</code></td>
+<td>تصمیم محصولی است (شکستن اسکریپت‌های نصب)</td>
+<td>اجبار به تغییر رمز در اولین ورود از راه دور</td>
+</tr>
+<tr>
+<td>BUG-03/04/09 — <code>catch</code> خالی و ۶۷۵ <code>console.log</code></td>
+<td>حجم زیاد؛ ریسک تغییر رفتار در مسیرهای حیاتی</td>
+<td>مهاجرت تدریجی به <code>log.*</code> با ESLint rule (<code>no-console</code>)</td>
+</tr>
+<tr>
+<td>PERF-04/05 — حافظهٔ کش مدل و N+1</td>
+<td>نیاز به پروفایلینگ واقعی با بار</td>
+<td>بنچمارک قبل/بعد با k6</td>
+</tr>
+<tr>
+<td>ARCH-01 — کامپوننت‌های غول‌پیکر</td>
+<td>بازنویسی UI، خارج از دامنهٔ «فیکس باگ»</td>
+<td>شکستن به زیرکامپوننت‌ها در PR جدا</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>۷. نحوهٔ بازتولید نتایج</h2>
+<pre><code class="language-bash">cd JB-Router
+
+# ۱) تست کامل (باید 0 failed باشد)
+cd tests &amp;&amp; npx vitest run
+
+# ۲) گیت رگرسیون تست (شکست در صورت افزودن تست ناموفق جدید)
+cd .. &amp;&amp; node scripts/ci/test-guard.mjs
+
+# ۳) گیت لینت (باید «no new findings» بدهد)
+node scripts/ci/lint-guard.mjs
+
+# ۴) فقط تست‌های رگرسیون این دور
+cd tests &amp;&amp; npx vitest run unit/api-key-at-rest.test.js unit/rate-limit.test.js \
+  unit/mimo-session-cookie.test.js unit/ssrf-metadata-guard.test.js \
+  unit/native-module-loader.test.js
+
+# ۵) آسیب‌پذیری‌ها
+cd .. &amp;&amp; npm audit --omit=dev     # ⇒ 0 vulnerabilities
+
+# ۶) تست دود دستی
+npm run dev        # سپس:
+curl -s localhost:20127/api/health
+curl -s -c cj.txt -X POST localhost:20127/api/auth/login \
+     -H &#39;content-type: application/json&#39; -d &#39;{&quot;password&quot;:&quot;123456&quot;}&#39;
+curl -s -b cj.txt -X POST localhost:20127/api/keys \
+     -H &#39;content-type: application/json&#39; -d &#39;{&quot;name&quot;:&quot;smoke&quot;}&#39;
+</code></pre>
+<hr>
+<h2>۸. انتشار در مخزن (انجام شد)</h2>
+<p>تغییرات در شاخهٔ <code>fix/security-bugs-tests</code> کامیت و پوش شد و از طریق <strong>Pull Request #1</strong> در <code>main</code> ادغام شد:</p>
+<pre><code class="language-text">PR      : EmamShahrooz-JB/JB-Router#1  (51 فایل، ۵ کامیت)
+merge   : a31a569  (merge commit روی main)
+CI      : ✅ Lint   ✅ Unit tests   ✅ Production build  (روی PR و روی main)
+</code></pre>
+<p>اجرای واقعی GitHub Actions روی همان کامیت نهایی:</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>نتیجه</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Lint (no new findings)</code></td>
+<td>✅ success</td>
+</tr>
+<tr>
+<td><code>Unit tests (no regressions)</code></td>
+<td>✅ success</td>
+</tr>
+<tr>
+<td><code>Production build</code></td>
+<td>✅ success</td>
+</tr>
+</tbody></table>
+<p>نکتهٔ مهم: همین CI سه ایراد واقعی را در گام اول پیدا کرد که در محیط محلی دیده نمی‌شدند و همه اصلاح شدند:</p>
+<ol>
+<li><strong><code>--ignore-scripts</code> در نصب CI</strong> باعث می‌شد <code>better-sqlite3</code> بدون binding بومی نصب شود؛ درایور بی‌صدا به <code>node:sqlite</code> سقوط می‌کرد و ۱۵ فایل تست شکست می‌خورد. ⇒ نصب با اسکریپت‌ها + یک گام «Verify native SQLite driver».</li>
+<li><strong><code>golden-url-header</code></strong> نسخهٔ پچِ Node (<code>X-PLATFORM-VERSION</code>, <code>X-Stainless-Runtime-Version</code>) و <strong><code>os.hostname()</code></strong> (<code>X-Msh-Device-Name</code>) را در snapshot قفل می‌کرد؛ یعنی فقط روی ماشین سازنده سبز بود. ⇒ نرمال‌سازی به <code>&lt;VER&gt;</code>/<code>&lt;HOSTNAME&gt;</code> و بازتولید snapshot.</li>
+<li><strong><code>devin-cli-executor</code></strong> فرض می‌کرد <code>XDG_CONFIG_HOME</code> تنظیم نشده، ولی رانرهای گیت‌هاب آن را تنظیم می‌کنند. ⇒ ایزوله‌کردن متغیر در محدودهٔ تست.</li>
+</ol>
+<p>همچنین <code>scripts/ci/test-guard.mjs</code> بهبود یافت تا در صورت شکست، <strong>متن دقیق assertion</strong> را در لاگ چاپ کند (قبلاً فقط نام فایل را می‌گفت و عیب‌یابی از لاگ گیت‌هاب ممکن نبود).</p>
+<h2>۹. یادآوری امنیتی</h2>
+<p>توکن GitHub که برای کلون در اختیار گذاشته بودید <strong>هنوز فعال است</strong> و به هر ۸ مخزن دسترسی دارد. توصیه می‌شود همین حالا از <code>Settings → Developer settings → Personal access tokens</code> آن را revoke کنید. این توکن در هیچ فایل یا گزارشی ذخیره نشده است.</p>
+
+</div>
+</body>
+</html>
