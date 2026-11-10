@@ -1,4 +1,5 @@
 import { PRAGMA_SQL } from "../schema.js";
+import { loadNativeModule } from "./nativeLoader.js";
 let Database = null;
 
 // Periodic checkpoint to keep WAL file small (avoid huge -wal/-shm growth)
@@ -6,7 +7,8 @@ const CHECKPOINT_INTERVAL_MS = 60 * 1000;
 
 export async function createBetterSqliteAdapter(filePath) {
   if (!Database) {
-    const mod = await import(String.fromCharCode(98,101,116,116,101,114,45,115,113,108,105,116,101,51));
+    // Resolved at runtime (see ./nativeLoader.js) – never bundled.
+    const mod = loadNativeModule("better-sqlite3");
     Database = mod.default || mod;
   }
   const db = new Database(filePath);

@@ -126,7 +126,7 @@ export async function POST(request) {
     console.log(`${new Date().toISOString().slice(11,23)} [mimo-login] start region=${sess.region} origin=${origin} egress=${egressSource}${egressLog ? ` (${egressLog})` : ""} page=${pageUrl.pathname}`);
 
     const res = NextResponse.json({ success: true, state: sess.state, pageUrl: proxiedPath, region });
-    res.cookies.set(SESSION_COOKIE, encodeSessionCookie(sess), {
+    res.cookies.set(SESSION_COOKIE, await encodeSessionCookie(sess), {
       path: "/",
       httpOnly: true,
       sameSite: "lax",

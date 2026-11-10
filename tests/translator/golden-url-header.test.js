@@ -27,6 +27,12 @@ const SPECIALIZED = new Set([
 function sanitize(headers) {
   const out = {};
   for (const [k, v] of Object.entries(headers)) {
+    // X-Msh-Device-Name is os.hostname(): it identifies the machine, not the
+    // provider contract, and it differs on every CI runner.
+    if (k.toLowerCase() === "x-msh-device-name") {
+      out[k] = "<HOSTNAME>";
+      continue;
+    }
     out[k] = typeof v === "string"
       ? v.replace(/Bearer .+/, "Bearer <TOK>")
           .replace(/sk-test-APIKEY|tok-test-ACCESS/g, "<CRED>")
@@ -35,6 +41,10 @@ function sanitize(headers) {
           // golden locks, and a version bump must not fail every provider snapshot.
           .replace(/JB-Router\/\d+\.\d+\.\d+/g, "JB-Router/<VER>")
           .replace(/^\d+\.\d+\.\d+$/, "<VER>")
+          // X-PLATFORM-VERSION carries the *Node* patch version, which differs
+          // between a dev machine and the CI runner (e.g. v22.19.0 vs v22.20.0).
+          // The contract this golden locks is the header set, not the runtime patch.
+          .replace(/^v\d+\.\d+\.\d+.*$/, "<VER>")
       : v;
   }
   return out;

@@ -24,7 +24,43 @@ function loadJwtSecret() {
   return generated;
 }
 
-const SECRET = new TextEncoder().encode(loadJwtSecret());
+const SECRET_STRING = loadJwtSecret();
+const SECRET = new TextEncoder().encode(SECRET_STRING);
+
+/** The raw deployment secret (env, or the persisted per-install file). */
+export function getDashboardSecretString() {
+  return SECRET_STRING;
+}
+
+/**
+ * Constant-time comparison for two secrets. Hashing both sides first makes the
+ * comparison length-independent, so timingSafeEqual never throws on a length
+ * mismatch (which would itself leak the expected length).
+ */
+export function timingSafeEqualString(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const ha = crypto.createHash("sha256").update(a, "utf8").digest();
+  const hb = crypto.createHash("sha256").update(b, "utf8").digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+/**
+ * Sign an opaque cookie value (HMAC-SHA256 over the value, base64url).
+ * Used by the mimo account-login session cookie, which travels through the
+ * browser and must not be forgeable: an unsigned payload would let any client
+ * point `upstreamBase` at an arbitrary host (open proxy / SSRF).
+ */
+export function signCookieValue(value) {
+  return crypto.createHmac("sha256", SECRET).update(String(value), "utf8").digest("base64url");
+}
+
+export function verifyCookieSignature(value, signature) {
+  if (typeof signature !== "string" || !signature) return false;
+  const expected = signCookieValue(value);
+  const got = Buffer.from(signature, "utf8");
+  const want = Buffer.from(expected, "utf8");
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
+}
 
 export function shouldUseSecureCookie(request) {
   const forceSecureCookie = process.env.AUTH_COOKIE_SECURE === "true";
@@ -83,5 +119,5 @@ export async function verifyDashboardPassword(password) {
   const storedHash = settings?.password;
   if (storedHash) return bcrypt.compare(password, storedHash);
   const initialPassword = process.env.INITIAL_PASSWORD || DEFAULT_PASSWORD;
-  return password === initialPassword;
+  return timingSafeEqualString(password, initialPassword);
 }

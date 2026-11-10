@@ -33,19 +33,24 @@ export default async function proxy(request) {
     // Anomaly: a login-flow XHR arrived without the session — the classic
     // cause of silent SPA "Something went wrong" 404s. Narrow to login paths
     // so unrelated unknown routes don't spam this.
-    console.log(`${new Date().toISOString().slice(11,23)} [mimo-login] no-session ${pathname} (cookie header: ${cookies ? cookies.slice(0, 80) : "<none>"})`);
+    // Never log raw cookie values: the header can carry auth_token and the
+    // upstream account jar. Log cookie *names* only.
+    const cookieNames = cookies
+      ? cookies.split(";").map((c) => c.split("=")[0].trim()).filter(Boolean).join(",")
+      : "none";
+    console.log(`${new Date().toISOString().slice(11,23)} [mimo-login] no-session ${pathname} (cookie names: ${cookieNames || "none"})`);
   }
   if (hasSessionCookie) {
-    const sess = sessionFromRequest(request);
+    const sess = await sessionFromRequest(request);
     if (sess) {
       const origin = originOf(request);
       try {
         if (isMimoTakeoverPath(pathname)) {
           const upstreamUrl = `${sess.upstreamBase}${takeoverUpstreamPath(pathname)}${request.nextUrl.search || ""}`;
-          return attachSessionCookie(await runTakeover(sess, upstreamUrl, origin), sess);
+          return await attachSessionCookie(await runTakeover(sess, upstreamUrl, origin), sess);
         }
         if (isAccountProxyPath(pathname)) {
-          return attachSessionCookie(await proxyAccountRequest(sess, request, origin), sess);
+          return await attachSessionCookie(await proxyAccountRequest(sess, request, origin), sess);
         }
       } catch (e) {
         console.log(`${new Date().toISOString().slice(11,23)} [mimo-login] proxy error:`, e?.message || e);

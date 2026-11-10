@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
+import { resetRateLimits } from "@/lib/rateLimit";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,15 @@ export async function PATCH(request) {
       Object.prototype.hasOwnProperty.call(body, "outboundNoProxy")
     ) {
       applyOutboundProxyEnv(settings);
+    }
+
+    // Drop stale throttling buckets when the limits themselves change
+    if (
+      Object.prototype.hasOwnProperty.call(body, "rateLimitEnabled") ||
+      Object.prototype.hasOwnProperty.call(body, "rateLimitPerMinute") ||
+      Object.prototype.hasOwnProperty.call(body, "rateLimitBurst")
+    ) {
+      resetRateLimits();
     }
 
     // Invalidate combo rotation state when strategy settings change

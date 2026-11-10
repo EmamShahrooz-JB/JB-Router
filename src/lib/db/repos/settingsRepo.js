@@ -25,6 +25,12 @@ const DEFAULT_SETTINGS = {
   },
   requireLogin: true,
   requireApiKey: true,
+  // Gateway throttling (src/lib/rateLimit.js). Enabled by default so a leaked
+  // key can't drain a user's upstream quota; tuned high enough to stay out of
+  // the way of normal IDE/agent traffic.
+  rateLimitEnabled: true,
+  rateLimitPerMinute: 600,
+  rateLimitBurst: 120,
   tunnelDashboardAccess: true,
   authMode: "password",
   ssoType: "oidc",
@@ -99,9 +105,25 @@ export function mergeWithDefaults(raw) {
   return merged;
 }
 
+// Short-lived memo: a single chat request reads settings 3-4 times (chat
+// handler, account selection, combo strategy, token refresh), and every read
+// was a SQLite round-trip plus a JSON parse. The TTL is deliberately tiny so a
+// settings change made from another process still lands almost immediately;
+// `updateSettings` below invalidates synchronously for the common case.
+const SETTINGS_CACHE_TTL_MS = Number(process.env.JB_ROUTER_SETTINGS_TTL_MS || 1500);
+let settingsCache = null; // { value, at }
+
+export function invalidateSettingsCache() {
+  settingsCache = null;
+}
+
 export async function getSettings() {
+  const now = Date.now();
+  if (settingsCache && now - settingsCache.at < SETTINGS_CACHE_TTL_MS) return settingsCache.value;
   const raw = await readRaw();
-  return mergeWithDefaults(raw);
+  const value = mergeWithDefaults(raw);
+  settingsCache = { value, at: now };
+  return value;
 }
 
 // Atomic read-merge-write inside transaction (prevents losing concurrent updates)
@@ -117,7 +139,9 @@ export async function updateSettings(updates) {
       [stringifyJson(next)],
     );
   });
-  return mergeWithDefaults(next);
+  const merged = mergeWithDefaults(next);
+  settingsCache = { value: merged, at: Date.now() };
+  return merged;
 }
 
 export async function isCloudEnabled() {

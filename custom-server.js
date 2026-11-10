@@ -13,6 +13,13 @@ const origCreate = http.createServer.bind(http);
 const PEER_TOKEN = crypto.randomBytes(24).toString("hex");
 process.env.JB_ROUTER_PEER_TOKEN = PEER_TOKEN;
 
+// h2c upgrade downgrade path buffers the whole body in memory before replaying
+// it, so it needs an explicit ceiling — a client could otherwise advertise a
+// huge content-length (or keep trickling bytes) and grow the heap until the
+// process dies. Anything above this is refused with 413.
+const H2C_MAX_BODY_BYTES = Number(process.env.JB_ROUTER_H2C_MAX_BODY_BYTES || 64 * 1024 * 1024);
+const H2C_BODY_TIMEOUT_MS = Number(process.env.JB_ROUTER_H2C_BODY_TIMEOUT_MS || 120_000);
+
 let backgroundRefreshStarted = false;
 
 function startBackgroundTokenRefreshFromCustomServer() {
@@ -85,7 +92,10 @@ http.createServer = (...args) => {
     }
 
     const contentLength = Number(req.headers["content-length"] || 0);
-    if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+    if (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > H2C_MAX_BODY_BYTES) {
+      try {
+        socket.end("HTTP/1.1 413 Payload Too Large\r\nconnection: close\r\ncontent-length: 0\r\n\r\n");
+      } catch { /* socket already gone */ }
       socket.destroy();
       return true;
     }
@@ -108,10 +118,18 @@ http.createServer = (...args) => {
     };
     if (received >= contentLength) serve();
     else {
+      const giveUp = () => {
+        socket.off("data", readBody);
+        socket.destroy();
+      };
+      // Bound the wait: without this an attacker holds a socket (and its
+      // buffers) open forever by announcing a body and never sending it.
+      socket.setTimeout(H2C_BODY_TIMEOUT_MS, giveUp);
       socket.on("data", function readBody(chunk) {
         chunks.push(chunk);
         received += chunk.length;
         if (received < contentLength) return;
+        socket.setTimeout(0);
         socket.off("data", readBody);
         serve();
       });

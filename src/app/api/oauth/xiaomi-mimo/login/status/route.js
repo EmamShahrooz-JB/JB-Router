@@ -11,7 +11,7 @@ import { sessionFromRequest, readSessionIdentity, attachSessionCookie } from "@/
 export async function GET(request) {
   const url = new URL(request.url);
   const state = url.searchParams.get("state") || "";
-  const sess = sessionFromRequest(request);
+  const sess = await sessionFromRequest(request);
   if (!sess || (state && sess.state !== state)) {
     return NextResponse.json({ status: "expired" }, { status: 404 });
   }
@@ -26,12 +26,12 @@ export async function GET(request) {
     // Re-arm the session cookie on every poll — the modal may sit on the login
     // form much longer than the 15min TTL, and only proxied responses used to
     // refresh it (browser silently drops an expired cookie before the POST).
-    return attachSessionCookie(NextResponse.json({ status: "pending", region: sess.region }), sess);
+    return await attachSessionCookie(NextResponse.json({ status: "pending", region: sess.region }), sess);
   }
 
   const id = readSessionIdentity(sess);
   if (!id) {
-    return attachSessionCookie(
+    return await attachSessionCookie(
       NextResponse.json({ status: "error", error: "session captured but passToken missing" }),
       sess,
     );

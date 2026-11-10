@@ -67,10 +67,6 @@ export default function CombosPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
-  useEffect(() => {
-    fetchData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Drop stale selection when the combo list changes (delete / refresh).
   useEffect(() => {
     const alive = new Set(combos.map((c) => c.id));
@@ -182,6 +178,12 @@ export default function CombosPage() {
       setLoading(false);
     }
   };
+
+  // Runs after `fetchData` is defined (it is a const, so referencing it from an
+  // effect declared above was a TDZ hazard the linter flagged).
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleSetCapacityAdapter = async (next) => {
     setCapacityAdapter(next);

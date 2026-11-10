@@ -1,12 +1,13 @@
 // Bun runtime adapter — uses built-in bun:sqlite (native, fastest under Bun).
 // Loaded only when process.versions.bun is present.
 import { PRAGMA_SQL } from "../schema.js";
+import { loadNativeModule } from "./nativeLoader.js";
 
 const CHECKPOINT_INTERVAL_MS = 60 * 1000;
 
 export async function createBunSqliteAdapter(filePath) {
-  // Dynamic import — only resolves under Bun runtime
-  const { Database } = await import(String.fromCharCode(98,117,110,58,115,113,108,105,116,101));
+  // Runtime require — only resolves under Bun (see ./nativeLoader.js)
+  const { Database } = loadNativeModule("bun:sqlite");
   const db = new Database(filePath, { create: true });
   db.exec(PRAGMA_SQL);
 

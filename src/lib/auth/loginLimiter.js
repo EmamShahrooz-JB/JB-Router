@@ -3,6 +3,12 @@ import { hasTrustedPeerHeaders } from "./trustedPeer.js";
 
 const MAX_FAILS_BEFORE_LOCK = 5;
 const LOCK_STEPS_MS = [30_000, 120_000, 600_000, 1_800_000]; // 30s, 2m, 10m, 30m
+// Requests whose real peer address is unknown (no custom-server, bare `next
+// start`, Workers) all share one bucket. Without a cap, five wrong guesses from
+// anywhere would lock out every user of the instance for half an hour — so that
+// shared bucket gets a short, fixed lock instead of the escalating schedule.
+const UNKNOWN_BUCKET = "unknown";
+const UNKNOWN_BUCKET_LOCK_MS = 60_000;
 const FAIL_WINDOW_MS = 60 * 60 * 1000; // 1h since last fail → auto reset
 
 const attempts = new Map(); // ip → { fails, lockUntil, lockLevel, lastFailAt }
@@ -33,7 +39,9 @@ export function recordFail(ip) {
   e.fails += 1;
   e.lastFailAt = now();
   if (e.fails >= MAX_FAILS_BEFORE_LOCK) {
-    const step = LOCK_STEPS_MS[Math.min(e.lockLevel, LOCK_STEPS_MS.length - 1)];
+    const step = ip === UNKNOWN_BUCKET
+      ? UNKNOWN_BUCKET_LOCK_MS
+      : LOCK_STEPS_MS[Math.min(e.lockLevel, LOCK_STEPS_MS.length - 1)];
     e.lockUntil = now() + step;
     e.lockLevel += 1;
     e.fails = 0;

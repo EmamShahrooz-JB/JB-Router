@@ -107,7 +107,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   if (providerThinking?.mode && providerThinking.mode !== "auto") {
     const mode = providerThinking.mode;
     if (mode === "on" && !body.thinking) {
-      console.log("Injecting provider-level thinking config override: on");
+      log?.debug?.("THINKING", `provider override: on · ${provider}/${model}`);
       body = { ...body, thinking: { type: "enabled", budget_tokens: 10000 } };
     } else if (mode === "off" && !body.thinking) {
       body = { ...body, thinking: { type: "disabled" } };
@@ -127,7 +127,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     ? compressMessages(body, tokenSaverEnabled && rtkEnabled)
     : null;
   const preTranslateRtkLine = formatRtkLog(preTranslateRtk);
-  if (preTranslateRtkLine) console.log(preTranslateRtkLine);
+  if (preTranslateRtkLine) log?.info?.("RTK", preTranslateRtkLine);
 
   const clientRequestedStreaming = body.stream === true || sourceFormat === FORMATS.ANTIGRAVITY || sourceFormat === FORMATS.GEMINI || sourceFormat === FORMATS.GEMINI_CLI;
   const providerRequiresStreaming = PROVIDERS[provider]?.forceStream === true;
@@ -454,6 +454,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
             providerResponse = retryResult.response;
             providerUrl = retryResult.url;
             providerResponseFormat = retryResult.responseFormat || targetFormat;
+            // Keep the telemetry in sync with the request that actually
+            // succeeded: the pre-refresh attempt 401'd, so holding on to its
+            // headers/body made request details show the rejected payload.
+            providerHeaders = retryResult.headers;
+            finalBody = retryResult.transformedBody;
+            try {
+              reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
+            } catch { /* logging must never break the request */ }
           }
         } catch { log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`); }
       } else {

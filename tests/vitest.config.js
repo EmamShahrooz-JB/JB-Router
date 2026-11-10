@@ -17,6 +17,9 @@ export default defineConfig({
     maxConcurrency: 60,
     // Suppress noisy console output from handlers under test
     silent: false,
+    // Settings are memoised for a couple of seconds in production (see
+    // settingsRepo.getSettings); tests swap databases per case, so disable it.
+    env: { JB_ROUTER_SETTINGS_TTL_MS: "0" },
   },
   resolve: {
     // Use array form so subpath aliases (e.g. "@/lib/db/index.js") resolve correctly.
