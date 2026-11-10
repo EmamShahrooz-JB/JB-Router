@@ -23,7 +23,6 @@
 // plain CJS require — so the bundler never analyses the specifier and the
 // driver chain keeps working in dev, in `next build` output and under Bun.
 
-import { createRequire } from "node:module";
 import path from "node:path";
 
 const LOADER_STUB = "__jb_router_native_loader__.cjs";
@@ -65,16 +64,70 @@ function candidateRequireBases() {
  * @returns {any} the CommonJS module namespace
  */
 export function loadNativeModule(specifier) {
-  let lastError = null;
-  for (const base of candidateRequireBases()) {
+  const strategies = runtimeRequireStrategies();
+  const errors = [];
+  for (const strategy of strategies) {
     try {
-      return createRequire(base)(specifier);
+      return strategy.require(specifier);
     } catch (error) {
-      lastError = error;
+      errors.push(error?.message || String(error));
     }
   }
-  const detail = lastError?.message ? `: ${lastError.message}` : "";
+  const detail = errors.length ? `: ${[...new Set(errors)].join(" | ")}` : "";
   throw new Error(`Cannot load runtime module "${specifier}"${detail}`);
+}
+
+/**
+ * Node's `require` is reachable differently depending on how this file was
+ * loaded, and the fallbacks matter:
+ *
+ *   1. Next's webpack server bundle is CommonJS, so a module function can see
+ *      the file-level `require` through `eval("require")` — webpack does not
+ *      rewrite the string, and the identifier resolves up the closure chain.
+ *   2. Turbopack (and plain `node file.mjs`) load real ES modules where no
+ *      `require` exists, but `node:module` exports a working `createRequire`.
+ *
+ * Importing `createRequire` statically is not enough: in the webpack server
+ * bundle `node:module` is replaced by an empty shim, so the import is
+ * `undefined` and calling it throws "(void 0) is not a function".
+ */
+function runtimeRequireStrategies() {
+  const strategies = [];
+
+  strategies.push({
+    name: "eval-require",
+    require: (specifier) => {
+      const req = eval("require"); // eslint-disable-line no-eval
+      if (typeof req !== "function") throw new Error("no CommonJS require in scope");
+      return req(specifier);
+    },
+  });
+
+  for (const base of candidateRequireBases()) {
+    strategies.push({
+      name: `createRequire:${base}`,
+      require: (specifier) => {
+        // Loaded lazily so a shimmed module in a bundle cannot break the others.
+        const { createRequire } = nodeModule();
+        if (typeof createRequire !== "function") throw new Error("createRequire unavailable");
+        return createRequire(base)(specifier);
+      },
+    });
+  }
+
+  return strategies;
+}
+
+// `node:module` is only touched lazily; see runtimeRequireStrategies().
+let cachedNodeModule = null;
+function nodeModule() {
+  if (cachedNodeModule) return cachedNodeModule;
+  const mod = globalThis.process?.getBuiltinModule?.("node:module");
+  if (mod) {
+    cachedNodeModule = mod;
+    return mod;
+  }
+  throw new Error("node:module is not available");
 }
 
 export default loadNativeModule;

@@ -77,3 +77,24 @@ describe("nativeLoader: runtime module resolution", () => {
     expect(order.some((d) => /better-sqlite3|node:|sql\.js/i.test(String(d)))).toBe(true);
   });
 });
+
+describe("nativeLoader: bundler compatibility", () => {
+  it("keeps a webpack-safe strategy chain (createRequire alone breaks the server bundle)", async () => {
+    const source = fs.readFileSync(
+      path.join(adaptersDir, "nativeLoader.js"),
+      "utf-8"
+    );
+    // Next's webpack server bundle replaces `node:module` with an empty shim, so
+    // a static `import { createRequire } from "node:module"` is `undefined` there
+    // ("(void 0) is not a function" at runtime). The loader must therefore try
+    // the CommonJS `require` in scope first and only then createRequire.
+    expect(source).not.toMatch(/import\s*\{[^}]*createRequire[^}]*\}\s*from\s*["']node:module["']/);
+    expect(source).toContain('eval("require")');
+    expect(source).toContain("getBuiltinModule");
+  });
+
+  it("loads better-sqlite3 through whichever strategy the runtime offers", () => {
+    const mod = loadNativeModule("better-sqlite3");
+    expect(typeof (mod.default || mod)).toBe("function");
+  });
+});

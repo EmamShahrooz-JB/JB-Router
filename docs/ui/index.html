@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JB-Router — اسکرین‌شات‌های واقعی رابط کاربری</title>
+<style>
+  :root{--bg:#0b0d12;--panel:#141821;--line:rgba(255,255,255,.09);--fg:#e9eef7;--muted:#98a4b8;--acc:#E56A4A}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:"Vazirmatn","Segoe UI","IRANSans",Tahoma,system-ui,sans-serif;line-height:1.9}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 22px 80px}
+  .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:26px}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:#1b2029;border:1px solid var(--line);
+    color:var(--fg);text-decoration:none;padding:8px 14px;border-radius:10px;font-size:13.5px}
+  .btn:hover{border-color:var(--acc);color:var(--acc)}
+  h1{font-size:clamp(1.5rem,3vw,2.1rem);margin:.2em 0 .3em}
+  .lede{color:var(--muted);max-width:70ch;margin:0 0 8px}
+  .warn{display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(229,106,74,.45);
+    background:rgba(229,106,74,.1);color:#ffd2c4;border-radius:12px;padding:12px 14px;font-size:13.5px;margin:18px 0 34px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    transition:border-color .2s,transform .2s}
+  figure:hover{border-color:rgba(229,106,74,.5);transform:translateY(-2px)}
+  figure a{display:block}
+  img{display:block;width:100%;height:auto;background:#fff}
+  figcaption{padding:12px 16px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  figcaption b{font-size:14px}
+  figcaption span{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;direction:ltr}
+  .full{grid-column:1/-1}
+  footer{margin-top:40px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="btn" href="../">← صفحه اصلی</a>
+    <a class="btn" href="../preview/">پیش‌نمایش تعاملی (شبیه‌سازی)</a>
+    <a class="btn" href="../review/">گزارش بازبینی</a>
+    <a class="btn" href="../fixes/">گزارش اصلاحات</a>
+  </div>
+
+  <h1>اسکرین‌شات‌های واقعی رابط کاربری JB-Router</h1>
+  <p class="lede">
+    این تصاویر با اجرای واقعی برنامه (نسخهٔ production بیلدشده) و مرورگر Chromium گرفته شده‌اند —
+    یعنی همان چیزی که کاربر روی <code>localhost:20128</code> می‌بیند، نه یک ماکاپ دستی.
+  </p>
+
+  <div class="warn">
+    <span>⚠️</span>
+    <span>
+      دادهٔ درون تصاویر <b>واقعی نیست</b>: دیتابیس تازه ساخته شده و فقط سه کلید API نمونه
+      (<code>dashboard</code>، <code>cli-laptop</code>، <code>ci-bot</code>) در آن ثبت شده است.
+      بنابراین Providers/Usage خالی است؛ چیدمان، رنگ‌ها، سایدبار و کارت‌ها اما کاملاً همان UI اصلی‌اند.
+    </span>
+  </div>
+
+  <div class="grid">
+    <figure class="full">
+      <a href="./02-dashboard.png"><img src="./02-dashboard.png" alt="Endpoint dashboard" loading="lazy"></a>
+      <figcaption><b>Endpoint &amp; Key — صفحهٔ اصلی داشبورد</b><span>/dashboard</span></figcaption>
+    </figure>
+
+    <figure class="full">
+      <a href="./09-dashboard-dark.png"><img src="./09-dashboard-dark.png" alt="Endpoint dashboard dark" loading="lazy"></a>
+      <figcaption><b>همان صفحه در تم تاریک</b><span>/dashboard · dark</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./01-login.png"><img src="./01-login.png" alt="Login" loading="lazy"></a>
+      <figcaption><b>صفحهٔ ورود</b><span>/login</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./03-providers.png"><img src="./03-providers.png" alt="Providers" loading="lazy"></a>
+      <figcaption><b>Providers</b><span>/dashboard/providers</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./04-combos.png"><img src="./04-combos.png" alt="Combos" loading="lazy"></a>
+      <figcaption><b>Combo &amp; Vision Adapter</b><span>/dashboard/combos</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./05-usage.png"><img src="./05-usage.png" alt="Usage" loading="lazy"></a>
+      <figcaption><b>Usage</b><span>/dashboard/usage</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./06-quota.png"><img src="./06-quota.png" alt="Quota tracker" loading="lazy"></a>
+      <figcaption><b>Quota Tracker</b><span>/dashboard/quota</span></figcaption>
+    </figure>
+
+    <figure>
+      <a href="./07-cli-tools.png"><img src="./07-cli-tools.png" alt="CLI tools" loading="lazy"></a>
+      <figcaption><b>CLI Tools</b><span>/dashboard/cli-tools</span></figcaption>
+    </figure>
+
+    <figure class="full">
+      <a href="./08-console-log.png"><img src="./08-console-log.png" alt="Console log" loading="lazy"></a>
+      <figcaption><b>Console Log</b><span>/dashboard/console-log</span></figcaption>
+    </figure>
+  </div>
+
+  <footer>
+    گرفته‌شده با Chromium + Playwright از بیلد production همین مخزن · تصاویر با کلیک در اندازهٔ کامل باز می‌شوند.
+  </footer>
+</div>
+</body>
+</html>
