@@ -35,6 +35,10 @@ function sanitize(headers) {
           // golden locks, and a version bump must not fail every provider snapshot.
           .replace(/JB-Router\/\d+\.\d+\.\d+/g, "JB-Router/<VER>")
           .replace(/^\d+\.\d+\.\d+$/, "<VER>")
+          // X-PLATFORM-VERSION carries the *Node* patch version, which differs
+          // between a dev machine and the CI runner (e.g. v22.19.0 vs v22.20.0).
+          // The contract this golden locks is the header set, not the runtime patch.
+          .replace(/^v\d+\.\d+\.\d+.*$/, "<VER>")
       : v;
   }
   return out;
