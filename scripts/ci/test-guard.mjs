@@ -70,6 +70,23 @@ if (fixed.length) {
 }
 if (regressions.length) {
   console.error(`[test-guard] ✗ NEW failing test files:\n  ${regressions.join("\n  ")}`);
+  // Print the actual reason for each regression: the job log is all a reviewer
+  // sees on GitHub, and "this file fails" without the assertion diff is useless.
+  for (const file of regressions) {
+    const result = report.testResults.find(
+      (t) => path.relative(TESTS_DIR, t.name).split(path.sep).join("/") === file
+    );
+    if (!result) continue;
+    const failed = (result.assertionResults || []).filter((a) => a.status === "failed");
+    if (!failed.length && result.message) {
+      console.error(`\n----- ${file} -----\n${String(result.message).slice(0, 1200)}`);
+      continue;
+    }
+    for (const assertion of failed.slice(0, 2)) {
+      const detail = (assertion.failureMessages || []).join("\n").slice(0, 900).trim();
+      console.error(`\n----- ${file} › ${assertion.fullName || assertion.title} -----\n${detail}`);
+    }
+  }
   process.exit(1);
 }
 console.log(`[test-guard] ✓ no regressions vs baseline (${known.size} known-failing files)`);
