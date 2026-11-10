@@ -27,7 +27,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      # NOTE: install scripts must run — better-sqlite3 is a native addon and
+      # several DB tests assert on it. With --ignore-scripts the driver chain
+      # silently falls back to node:sqlite and those tests fail on CI only.
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - name: ESLint regression guard
         run: node scripts/ci/lint-guard.mjs
 
@@ -40,7 +43,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      # NOTE: install scripts must run — better-sqlite3 is a native addon and
+      # several DB tests assert on it. With --ignore-scripts the driver chain
+      # silently falls back to node:sqlite and those tests fail on CI only.
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Verify native SQLite driver
+        run: node -e "const D=require('better-sqlite3');const d=new D(':memory:');d.exec('select 1');d.close();console.log('better-sqlite3 OK')"
       - name: Install test dependencies
         working-directory: tests
         run: npm install --no-audit --no-fund
@@ -56,7 +64,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund
+      # NOTE: install scripts must run — better-sqlite3 is a native addon and
+      # several DB tests assert on it. With --ignore-scripts the driver chain
+      # silently falls back to node:sqlite and those tests fail on CI only.
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - name: Next.js build
         run: npm run build
         env:
